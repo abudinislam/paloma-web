@@ -33,7 +33,7 @@ def recognize_invoice(file_bytes: bytes, is_pdf: bool = False) -> dict:
         file_part = {"type": "image", "source": {"type": "base64", "media_type": mime_type, "data": b64}}
 
     response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model="claude-haiku-4-5-20250307",
         max_tokens=2000,
         messages=[{"role": "user", "content": [file_part, {"type": "text", "text": CLAUDE_PROMPT}]}],
     )
