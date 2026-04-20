@@ -189,6 +189,7 @@ tr:hover td{background:var(--gray-50)}
             <div>
               <div class="card-title" id="result-title">Результат</div>
               <div id="result-sub" style="font-size:11px;color:var(--gray-400);margin-top:2px"></div>
+              <div id="result-source" style="margin-top:4px"></div>
             </div>
             <div style="display:flex;gap:8px">
               <button class="btn btn-sm" onclick="resetParser()">← Новый файл</button>
@@ -412,6 +413,14 @@ function renderResult(data) {
     num ? `Распознано: документ №${num}` : 'Распознано';
   document.getElementById('result-sub').textContent =
     [supplier, date, `${items.length} позиций`].filter(Boolean).join(' · ');
+
+  const source = data._source || 'claude';
+  const sourceEl = document.getElementById('result-source');
+  if (source === 'pdfplumber') {
+    sourceEl.innerHTML = '<span class="badge badge-green" style="font-size:10px">⚡ pdfplumber — бесплатно</span>';
+  } else {
+    sourceEl.innerHTML = '<span class="badge badge-gray" style="font-size:10px">🤖 Claude AI — распознан сканом</span>';
+  }
 
   const tbody = document.getElementById('result-tbody');
   tbody.innerHTML = '';
