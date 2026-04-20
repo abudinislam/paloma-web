@@ -1,6 +1,7 @@
 """
 xlsx_writer.py — генерация xlsx-файла для импорта в Paloma365.
 """
+import os
 import re
 import zipfile
 import tempfile
@@ -90,7 +91,7 @@ def make_paloma_xlsx(items: list, supplier: str) -> Path:
             f'<c r="X{n}" s="15"/>',
             f'<c r="Y{n}" s="22" t="s"><v>{d["supplier_idx"]}</v></c>',
         ]
-        return f'<row r="{n}">{"".join(c)}</row>'
+        return f'<row r="{n}">{" ".join(c)}</row>'
 
     row1 = re.search(r'<row r="1"[^>]*>.*?</row>', sheet_xml, re.DOTALL)
     row2 = re.search(r'<row r="2"[^>]*>.*?</row>', sheet_xml, re.DOTALL)
@@ -114,7 +115,11 @@ def make_paloma_xlsx(items: list, supplier: str) -> Path:
     parts['xl/sharedStrings.xml'] = ''.join(sst_parts).encode('utf-8')
     parts['xl/worksheets/sheet1.xml'] = new_sheet_xml.encode('utf-8')
 
-    out_path = Path(tempfile.mktemp(suffix='.xlsx'))
+    # Безопасное создание временного файла (mkstemp вместо устаревшего mktemp)
+    fd, tmp_path = tempfile.mkstemp(suffix='.xlsx')
+    os.close(fd)
+    out_path = Path(tmp_path)
+
     with zipfile.ZipFile(str(out_path), 'w', zipfile.ZIP_DEFLATED) as zf:
         for name, data in parts.items():
             zf.writestr(name, data)
