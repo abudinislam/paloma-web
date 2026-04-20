@@ -1,8 +1,7 @@
 """
-wsgi.py — точка входа для gunicorn и локального запуска.
-Логика вынесена в пакет core/.
+wsgi.py — точка входа для gunicorn.
 """
-from core import create_app
+from app import create_app
 import os
 
 app = create_app()
