@@ -4,6 +4,7 @@ parser.py — парсинг цифровых PDF через pdfplumber (без 
 import io
 import re
 import logging
+from typing import Optional
 from pypdf import PdfReader
 import pdfplumber
 
@@ -61,7 +62,7 @@ def detect_columns(header_row: list) -> dict:
         if cell is None:
             continue
         c = str(cell).lower().replace("\n", " ").strip()
-        if re.search(r'^№$|^#$', c):
+        if re.search(r'^\u2116$|^#$', c):
             col_map["num_idx"] = i
         elif re.search(r'артикул', c):
             col_map["art_idx"] = i
@@ -84,7 +85,7 @@ def detect_columns(header_row: list) -> dict:
     return col_map
 
 
-def parse_product_row(row: list, col_map: dict) -> dict | None:
+def parse_product_row(row: list, col_map: dict) -> Optional[dict]:
     name_idx = col_map["name_idx"]
     if name_idx is None or name_idx >= len(row):
         return None
@@ -115,7 +116,7 @@ def parse_product_row(row: list, col_map: dict) -> dict | None:
     }
 
 
-def parse_with_pdfplumber(file_bytes: bytes) -> tuple[list, str, str, str]:
+def parse_with_pdfplumber(file_bytes: bytes):
     """Парсинг цифрового PDF без ИИ. Возвращает (items, supplier, date, number)."""
     items, supplier, date_str, number = [], "", "", ""
     try:
@@ -124,7 +125,7 @@ def parse_with_pdfplumber(file_bytes: bytes) -> tuple[list, str, str, str]:
         m = re.search(r'Поставщик[:\s]+(.+?)(?=Покупатель|Договор|$)', text, re.S | re.I)
         if m:
             supplier = clean_name(m.group(1).split("\n")[0])
-        m = re.search(r'Счет[^\n]*?№\s*([\w-]+)\s+от\s+(\d+\s+\w+\s+\d{4})', text, re.I)
+        m = re.search(r'Счет[^\n]*?\u2116\s*([\w-]+)\s+от\s+(\d+\s+\w+\s+\d{4})', text, re.I)
         if m:
             number, date_str = m.group(1).strip(), m.group(2).strip()
         with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
