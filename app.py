@@ -8,20 +8,45 @@ import base64
 import re
 import zipfile
 import tempfile
-import shutil
+import logging
 from pathlib import Path
 from datetime import datetime
 from html import escape as xml_escape
 
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, after_this_request
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import pdfplumber
 from pypdf import PdfReader
 
-app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024  # 20 MB
+# ── Logging ────────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
+logger = logging.getLogger(__name__)
 
+# ── App ────────────────────────────────────────────────────────
+app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB
+
+# ── Rate Limiting ──────────────────────────────────────────────
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",
+)
+
+# ── Config ─────────────────────────────────────────────────────
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
-TEMPLATE_PATH  = Path("items_template.xlsx")
+if not CLAUDE_API_KEY:
+    raise RuntimeError(
+        "CLAUDE_API_KEY не задан. "
+        "Укажи переменную окружения перед запуском."
+    )
+
+TEMPLATE_PATH = Path("items_template.xlsx")
 
 PALOMA_HEADERS = [
     'Справочник товаров', 'Остатки', 'Код', 'Признак группы',
@@ -174,8 +199,8 @@ def parse_with_pdfplumber(file_bytes):
                         item = parse_product_row(row, col_map)
                         if item:
                             items.append(item)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.exception("pdfplumber error: %s", e)
     return items, supplier, date_str, number
 
 
@@ -206,8 +231,6 @@ def recognize_invoice(file_bytes, is_pdf=False):
 
     raw = response.content[0].text.strip()
 
-    # Ищем JSON любым способом
-    # 1. Убираем markdown блоки
     if "```" in raw:
         for chunk in raw.split("```"):
             chunk = chunk.strip().lstrip("json").strip()
@@ -215,7 +238,6 @@ def recognize_invoice(file_bytes, is_pdf=False):
                 raw = chunk
                 break
 
-    # 2. Берём только от первой { до последней }
     start = raw.find("{")
     end = raw.rfind("}") + 1
     if start >= 0 and end > start:
@@ -344,6 +366,7 @@ def index():
 
 
 @app.route('/api/parse', methods=['POST'])
+@limiter.limit("20 per minute")
 def parse():
     if 'file' not in request.files:
         return jsonify({'error': 'Файл не загружен'}), 400
@@ -354,11 +377,13 @@ def parse():
     file_bytes = f.read()
     is_pdf = f.filename.lower().endswith('.pdf')
 
+    logger.info("parse request: file=%s size=%d bytes", f.filename, len(file_bytes))
+
     try:
-        # Шаг 1: пробуем pdfplumber (бесплатно, мгновенно)
         if is_pdf or file_bytes[:4] == b'%PDF':
             items, supplier, date_str, number = parse_with_pdfplumber(file_bytes)
             if items:
+                logger.info("pdfplumber success: %d items", len(items))
                 return jsonify({'ok': True, 'data': {
                     'поставщик': supplier,
                     'дата': date_str,
@@ -367,18 +392,21 @@ def parse():
                     '_source': 'pdfplumber'
                 }})
 
-        # Шаг 2: fallback на Claude API (сканы, фото, нечитаемые PDF)
         data = recognize_invoice(file_bytes, is_pdf=is_pdf)
         data['_source'] = 'claude'
+        logger.info("claude success: %d items", len(data.get('позиции', [])))
         return jsonify({'ok': True, 'data': data})
 
     except json.JSONDecodeError:
+        logger.error("JSON decode error from Claude response")
         return jsonify({'error': 'ИИ вернул некорректный ответ, попробуйте ещё раз'}), 500
     except Exception as e:
+        logger.exception("parse error: %s", e)
         return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/download', methods=['POST'])
+@limiter.limit("30 per minute")
 def download():
     body = request.json
     items    = body.get('items', [])
@@ -389,17 +417,36 @@ def download():
 
     try:
         out_path = make_paloma_xlsx(items, supplier)
+
+        @after_this_request
+        def cleanup(response):
+            try:
+                out_path.unlink(missing_ok=True)
+            except Exception as cleanup_err:
+                logger.warning("temp file cleanup failed: %s", cleanup_err)
+            return response
+
         date_tag = datetime.now().strftime("%d%m%Y_%H%M")
         filename = f"paloma_{date_tag}.xlsx"
-        response = send_file(
+        return send_file(
             str(out_path),
             as_attachment=True,
             download_name=filename,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
-        return response
     except Exception as e:
+        logger.exception("download error: %s", e)
         return jsonify({'error': str(e)}), 500
+
+
+@app.errorhandler(413)
+def file_too_large(e):
+    return jsonify({'error': 'Файл слишком большой. Максимум 10 МБ.'}), 413
+
+
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    return jsonify({'error': 'Слишком много запросов. Подожди немного.'}), 429
 
 
 if __name__ == '__main__':
