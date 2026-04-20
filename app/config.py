@@ -8,7 +8,8 @@ if not CLAUDE_API_KEY:
         "Укажи переменную окружения перед запуском."
     )
 
-TEMPLATE_PATH = Path("items_template.xlsx")
+# Абсолютный путь от корня проекта, независимо от cwd
+TEMPLATE_PATH = Path(__file__).parent.parent / "items_template.xlsx"
 
 PALOMA_HEADERS = [
     'Справочник товаров', 'Остатки', 'Код', 'Признак группы',
