@@ -14,7 +14,8 @@ from datetime import datetime
 from html import escape as xml_escape
 
 from flask import Flask, render_template, request, jsonify, send_file
-import anthropic
+import pdfplumber
+from pypdf import PdfReader
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024  # 20 MB
@@ -32,28 +33,15 @@ PALOMA_HEADERS = [
     'Количество', 'Стоимость', 'Склад', 'Поставщик',
 ]
 
-CLAUDE_PROMPT = """Ты парсер накладных/счетов-фактур. Извлеки все товарные позиции.
+CLAUDE_PROMPT = """Извлеки все товарные позиции из документа.
 
-Верни ТОЛЬКО валидный JSON без markdown:
-{
-  "поставщик": "название ТОО или ИП",
-  "дата": "дд.мм.гггг",
-  "номер": "номер документа",
-  "позиции": [
-    {
-      "название": "полное наименование товара",
-      "артикул": "артикул или штрихкод (если есть, иначе пустая строка)",
-      "количество": 10,
-      "единица": "шт",
-      "цена": 1500.0,
-      "сумма": 15000.0,
-      "категория": "Электрика"
-    }
-  ]
-}
+Верни ТОЛЬКО JSON, без какого-либо текста до или после. Без markdown. Без пояснений.
+
+Формат ответа:
+{"поставщик":"название","дата":"дд.мм.гггг","номер":"номер","позиции":[{"название":"наименование","артикул":"артикул или штрихкод или пустая строка","количество":1,"единица":"шт","цена":0.0,"сумма":0.0,"категория":"Электрика"}]}
 
 Категории: Сантехника, Электрика, Инструменты, Отделка, Крепёж, Стройматериалы, Другое.
-Цена и количество — всегда числа. Если поле не читается — пустая строка или 0."""
+Числа — только цифры без пробелов и символов валюты. Если поле не читается — пустая строка или 0."""
 
 
 def detect_category(name):
@@ -71,6 +59,124 @@ def detect_category(name):
     if any(w in n for w in ["цемент","штукатурка","смесь","клей","грунт","пена"]):
         return "Стройматериалы"
     return "Другое"
+
+
+import anthropic
+
+# ── pdfplumber парсер (бесплатно, для цифровых PDF) ───────────
+
+def to_float(v):
+    if v is None:
+        return 0.0
+    s = str(v).strip().replace(" ", "").replace("\xa0", "")
+    if "," in s and "." in s:
+        s = s.replace(".", "").replace(",", ".")
+    elif "," in s:
+        s = s.replace(",", ".")
+    s = re.sub(r"[^\d.]", "", s)
+    try:
+        return float(s)
+    except (ValueError, TypeError):
+        return 0.0
+
+def clean_name(name):
+    if not name:
+        return ""
+    return " ".join(str(name).split())
+
+def extract_article_from_name(name):
+    m = re.search(r'\(\s*[Aa]rt\.?\s*(\w+)\s*\)', name)
+    return m.group(1) if m else ""
+
+def detect_columns(header_row):
+    col_map = {"num_idx": None, "art_idx": None, "name_idx": None,
+               "qty_idx": None, "price_idx": None, "price2_idx": None,
+               "sum_idx": None}
+    for i, cell in enumerate(header_row):
+        if cell is None:
+            continue
+        c = str(cell).lower().replace("\n", " ").strip()
+        if re.search(r'^№$|^#$', c):
+            col_map["num_idx"] = i
+        elif re.search(r'артикул', c):
+            col_map["art_idx"] = i
+        elif re.search(r'товар|наименован|услуг', c):
+            col_map["name_idx"] = i
+        elif re.search(r'кол.?во|количество', c):
+            col_map["qty_idx"] = i
+        elif re.search(r'цена\s+со\s+скидкой|цена со', c):
+            col_map["price_idx"] = i
+        elif re.search(r'цена\s+без\s+скидки|цена без', c):
+            col_map["price2_idx"] = i
+        elif re.search(r'^цена$', c):
+            col_map["price_idx"] = i
+        elif re.search(r'сумма\s+со\s+скидкой|^сумма$', c) and col_map["sum_idx"] is None:
+            col_map["sum_idx"] = i
+        elif re.search(r'сумма', c) and col_map["sum_idx"] is None:
+            col_map["sum_idx"] = i
+    if col_map["price_idx"] is None and col_map["price2_idx"] is not None:
+        col_map["price_idx"] = col_map["price2_idx"]
+    return col_map
+
+def parse_product_row(row, col_map):
+    name_idx = col_map["name_idx"]
+    if name_idx is None or name_idx >= len(row):
+        return None
+    num_idx = col_map["num_idx"]
+    if num_idx is not None and num_idx < len(row):
+        if not re.match(r'^\d+$', str(row[num_idx] or "").strip()):
+            return None
+    name = clean_name(row[name_idx])
+    if not name or len(name) < 3:
+        return None
+    art_idx = col_map["art_idx"]
+    article = str(row[art_idx]).strip() if (art_idx is not None and art_idx < len(row) and row[art_idx]) else extract_article_from_name(name)
+    qty_idx = col_map["qty_idx"]
+    qty = int(to_float(row[qty_idx])) or 1 if (qty_idx is not None and qty_idx < len(row)) else 1
+    unit = "шт"
+    for cell in row:
+        if cell and str(cell).strip().lower() in ("шт","кг","л","м","уп","пара","компл"):
+            unit = str(cell).strip().lower()
+            break
+    price = to_float(row[col_map["price_idx"]]) if col_map["price_idx"] is not None and col_map["price_idx"] < len(row) else 0.0
+    summa = to_float(row[col_map["sum_idx"]]) if col_map["sum_idx"] is not None and col_map["sum_idx"] < len(row) else 0.0
+    if summa == 0 and price > 0 and qty > 0:
+        summa = round(price * qty, 2)
+    return {"название": name, "артикул": article, "количество": qty,
+            "единица": unit, "цена": price, "сумма": summa,
+            "категория": detect_category(name)}
+
+def parse_with_pdfplumber(file_bytes):
+    """Парсинг цифрового PDF без ИИ. Возвращает (items, supplier, date, number)."""
+    import io
+    items, supplier, date_str, number = [], "", "", ""
+    try:
+        reader = PdfReader(io.BytesIO(file_bytes))
+        text = "\n".join(page.extract_text() or "" for page in reader.pages)
+        m = re.search(r'Поставщик[:\s]+(.+?)(?=Покупатель|Договор|$)', text, re.S | re.I)
+        if m:
+            supplier = clean_name(m.group(1).split("\n")[0])
+        m = re.search(r'Счет[^\n]*?№\s*([\w-]+)\s+от\s+(\d+\s+\w+\s+\d{4})', text, re.I)
+        if m:
+            number, date_str = m.group(1).strip(), m.group(2).strip()
+        with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+            for page in pdf.pages:
+                for table in page.extract_tables():
+                    if not table or len(table) < 2:
+                        continue
+                    header_text = " ".join(str(c) for c in table[0] if c).lower()
+                    if not any(kw in header_text for kw in ["товар","наименован","кол-во","количество","цена"]):
+                        continue
+                    col_map = detect_columns(table[0])
+                    if col_map.get("name_idx") is None:
+                        continue
+                    for row in table[1:]:
+                        item = parse_product_row(row, col_map)
+                        if item:
+                            items.append(item)
+    except Exception:
+        pass
+    return items, supplier, date_str, number
 
 
 def recognize_invoice(file_bytes, is_pdf=False):
@@ -99,12 +205,21 @@ def recognize_invoice(file_bytes, is_pdf=False):
     )
 
     raw = response.content[0].text.strip()
+
+    # Ищем JSON любым способом
+    # 1. Убираем markdown блоки
     if "```" in raw:
         for chunk in raw.split("```"):
             chunk = chunk.strip().lstrip("json").strip()
             if chunk.startswith("{"):
                 raw = chunk
                 break
+
+    # 2. Берём только от первой { до последней }
+    start = raw.find("{")
+    end = raw.rfind("}") + 1
+    if start >= 0 and end > start:
+        raw = raw[start:end]
 
     data = json.loads(raw)
     for p in data.get("позиции", []):
@@ -232,7 +347,6 @@ def index():
 def parse():
     if 'file' not in request.files:
         return jsonify({'error': 'Файл не загружен'}), 400
-
     f = request.files['file']
     if not f.filename:
         return jsonify({'error': 'Файл не выбран'}), 400
@@ -241,8 +355,23 @@ def parse():
     is_pdf = f.filename.lower().endswith('.pdf')
 
     try:
+        # Шаг 1: пробуем pdfplumber (бесплатно, мгновенно)
+        if is_pdf or file_bytes[:4] == b'%PDF':
+            items, supplier, date_str, number = parse_with_pdfplumber(file_bytes)
+            if items:
+                return jsonify({'ok': True, 'data': {
+                    'поставщик': supplier,
+                    'дата': date_str,
+                    'номер': number,
+                    'позиции': items,
+                    '_source': 'pdfplumber'
+                }})
+
+        # Шаг 2: fallback на Claude API (сканы, фото, нечитаемые PDF)
         data = recognize_invoice(file_bytes, is_pdf=is_pdf)
+        data['_source'] = 'claude'
         return jsonify({'ok': True, 'data': data})
+
     except json.JSONDecodeError:
         return jsonify({'error': 'ИИ вернул некорректный ответ, попробуйте ещё раз'}), 500
     except Exception as e:
