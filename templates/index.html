@@ -15,8 +15,8 @@
   --white:#fff;--radius:12px;--radius-sm:8px;
 }
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--gray-50);color:var(--gray-800);line-height:1.5;font-size:14px}
-.app{display:grid;grid-template-columns:220px 1fr;height:100vh;overflow:hidden}
-.sidebar{background:var(--white);border-right:1px solid var(--gray-100);display:flex;flex-direction:column;overflow:hidden}
+.app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+.sidebar{background:var(--white);border-right:1px solid var(--gray-100);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
 .sidebar-header{padding:1.25rem;border-bottom:1px solid var(--gray-100)}
 .logo{font-size:15px;font-weight:600;color:var(--gray-800)}
 .logo span{color:var(--teal)}
@@ -31,7 +31,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .status-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--gray-400)}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--teal);animation:pulse 2s infinite;flex-shrink:0}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
-.main{display:flex;flex-direction:column;overflow:hidden}
+.main{display:flex;flex-direction:column}
 .topbar{background:var(--white);border-bottom:1px solid var(--gray-100);padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .page-title{font-size:15px;font-weight:600}
 .page-sub{font-size:12px;color:var(--gray-400);margin-top:2px}
@@ -39,7 +39,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .badge-green{background:var(--teal-light);color:var(--teal-dark)}
 .badge-gray{background:var(--gray-100);color:var(--gray-600)}
 .badge-amber{background:var(--amber-light);color:var(--amber-dark)}
-.content{padding:1.5rem;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:1.25rem}
+.content{padding:1.5rem;flex:1;display:flex;flex-direction:column;gap:1.25rem}
 .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .metric{background:var(--gray-50);border-radius:var(--radius-sm);padding:1rem}
 .metric-label{font-size:11px;color:var(--gray-400);margin-bottom:4px}
