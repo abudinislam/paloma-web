@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PalomaBot — автоматизация накладных</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -14,7 +17,7 @@
   --gray-400:#888780;--gray-600:#5F5E5A;--gray-800:#2C2C2A;
   --white:#fff;--radius:12px;--radius-sm:8px;
 }
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--gray-50);color:var(--gray-800);line-height:1.5;font-size:14px}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--gray-50);color:var(--gray-800);line-height:1.5;font-size:14px}
 .app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
 .sidebar{background:var(--white);border-right:1px solid var(--gray-100);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
 .sidebar-header{padding:1.25rem;border-bottom:1px solid var(--gray-100)}
@@ -23,16 +26,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .logo-sub{font-size:11px;color:var(--gray-400);margin-top:2px}
 .nav{padding:0.5rem 0;flex:1}
 .nav-section{font-size:10px;font-weight:600;color:var(--gray-400);padding:0.75rem 1rem 0.25rem;text-transform:uppercase;letter-spacing:0.06em}
-.nav-item{display:flex;align-items:center;gap:10px;padding:8px 1rem;font-size:13px;cursor:pointer;color:var(--gray-600);border-left:2px solid transparent;transition:all 0.15s;text-decoration:none;white-space:nowrap}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 1rem;font-size:13px;cursor:pointer;color:var(--gray-600);border-left:2px solid transparent;transition:all 0.15s;text-decoration:none;white-space:nowrap}
 .nav-item:hover{background:var(--gray-50);color:var(--gray-800)}
 .nav-item.active{color:var(--teal-dark);background:var(--teal-light);border-left-color:var(--teal);font-weight:500}
-.nav-icon{font-size:14px;width:20px;text-align:center;flex-shrink:0}
+.nav-icon{width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.nav-icon svg{width:18px;height:18px;stroke:currentColor}
+.mobile-topbar{display:none;background:var(--white);border-bottom:1px solid var(--gray-100);padding:0.875rem 1rem;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:0;z-index:20}
+.mobile-brand{font-size:15px;font-weight:600}
+.mobile-brand span{color:var(--teal)}
+.mobile-menu-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;border:1px solid var(--gray-200);background:var(--white);cursor:pointer}
+.mobile-menu-btn svg{width:20px;height:20px;stroke:var(--gray-800)}
 .sidebar-footer{padding:1rem;border-top:1px solid var(--gray-100)}
 .status-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--gray-400)}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--teal);animation:pulse 2s infinite;flex-shrink:0}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
-.main{display:flex;flex-direction:column}
-.topbar{background:var(--white);border-bottom:1px solid var(--gray-100);padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.main{display:flex;flex-direction:column;min-width:0}
+.topbar{background:var(--white);border-bottom:1px solid var(--gray-100);padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:16px}
 .page-title{font-size:15px;font-weight:600}
 .page-sub{font-size:12px;color:var(--gray-400);margin-top:2px}
 .badge{display:inline-flex;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:500}
@@ -46,7 +55,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .metric-value{font-size:22px;font-weight:600;color:var(--gray-800)}
 .metric-sub{font-size:11px;color:var(--gray-400);margin-top:2px}
 .card{background:var(--white);border:1px solid var(--gray-100);border-radius:var(--radius);overflow:hidden}
-.card-header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--gray-100)}
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--gray-100);gap:12px}
 .card-title{font-size:13px;font-weight:600}
 .card-body{padding:1.25rem}
 .upload-zone{border:2px dashed var(--gray-200);border-radius:var(--radius-sm);padding:2.5rem;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--gray-50)}
@@ -76,7 +85,7 @@ tr:hover td{background:var(--gray-50)}
 .tag-amber{background:var(--amber-light);color:var(--amber-dark)}
 .tag-blue{background:var(--blue-light);color:var(--blue-dark)}
 .art{font-family:monospace;font-size:10px;background:var(--teal-light);color:var(--teal-dark);padding:2px 6px;border-radius:4px}
-.table-footer{display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1.25rem;border-top:1px solid var(--gray-100);background:var(--gray-50)}
+.table-footer{display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1.25rem;border-top:1px solid var(--gray-100);background:var(--gray-50);gap:12px}
 .total-label{font-size:12px;color:var(--gray-400)}
 .total-val{font-size:13px;font-weight:600}
 .success-note{font-size:11px;color:var(--teal)}
@@ -91,18 +100,50 @@ tr:hover td{background:var(--gray-50)}
 .log-text{font-size:12px;font-weight:500}
 .log-sub{font-size:11px;color:var(--gray-400);margin-top:1px}
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem}
-.feature-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-100)}
+.feature-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-100);gap:12px}
 .feature-row:last-child{border-bottom:none}
 .spinner{width:20px;height:20px;border:2px solid var(--teal-light);border-top-color:var(--teal);border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block}
 @keyframes spin{to{transform:rotate(360deg)}}
-.upload-icon{font-size:28px;margin-bottom:0.75rem;display:block}
+.upload-icon{width:28px;height:28px;margin:0 auto 0.75rem;display:block;color:var(--teal)}
 .coming-soon{text-align:center;padding:3rem;color:var(--gray-400)}
 .coming-soon h3{font-size:16px;color:var(--gray-600);margin:1rem 0 0.5rem}
+.coming-soon-icon{width:36px;height:36px;margin:0 auto;color:var(--gray-400)}
+.coming-soon-icon svg{width:36px;height:36px;stroke:currentColor}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.mobile-overlay{display:none}
+@media (max-width: 960px){
+  .app{grid-template-columns:1fr}
+  .mobile-topbar{display:flex}
+  .sidebar{position:fixed;left:0;top:0;bottom:0;width:280px;z-index:30;transform:translateX(-100%);transition:transform .2s ease, box-shadow .2s ease}
+  .sidebar.open{transform:translateX(0);box-shadow:0 8px 40px rgba(0,0,0,.18)}
+  .mobile-overlay{display:block;position:fixed;inset:0;background:rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .2s ease;z-index:25}
+  .mobile-overlay.open{opacity:1;pointer-events:auto}
+  .topbar{padding:1rem}
+  .content{padding:1rem}
+  .metrics{grid-template-columns:1fr}
+  .two-col{grid-template-columns:1fr}
+  .card-header,.table-footer,.topbar{flex-direction:column;align-items:flex-start}
+}
+@media (max-width: 640px){
+  body{font-size:16px}
+  .steps{overflow-x:auto;padding-bottom:4px}
+  .upload-zone{padding:1.5rem}
+  .result-wrap{overflow-x:auto}
+  table{min-width:720px}
+  .nav-item,.btn,.mobile-menu-btn{min-height:44px}
+}
 </style>
 </head>
 <body>
+<div class="mobile-overlay" id="mobile-overlay" onclick="closeSidebar()"></div>
+<div class="mobile-topbar">
+  <button class="mobile-menu-btn" type="button" onclick="toggleSidebar()" aria-label="Открыть меню">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+  </button>
+  <div class="mobile-brand">Paloma<span>Bot</span></div>
+</div>
 <div class="app">
-  <div class="sidebar">
+  <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="logo">Paloma<span>Bot</span></div>
       <div class="logo-sub">Автоматизация закупок</div>
@@ -110,17 +151,17 @@ tr:hover td{background:var(--gray-50)}
     <nav class="nav">
       <div class="nav-section">Основное</div>
       <a class="nav-item active" onclick="showPage('parser',this)">
-        <span class="nav-icon">📄</span> Парсер накладных
+        <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg></span> Парсер накладных
       </a>
       <a class="nav-item" onclick="showPage('bot',this)">
-        <span class="nav-icon">🤖</span> Telegram бот
+        <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg></span> Telegram бот
       </a>
       <a class="nav-item" onclick="showPage('history',this)">
-        <span class="nav-icon">🕐</span> История
+        <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg></span> История
       </a>
       <div class="nav-section">Аналитика</div>
       <a class="nav-item" onclick="showPage('prices',this)">
-        <span class="nav-icon">📈</span> Мониторинг цен
+        <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span> Мониторинг цен
       </a>
     </nav>
     <div class="sidebar-footer">
@@ -133,7 +174,6 @@ tr:hover td{background:var(--gray-50)}
 
   <div class="main">
 
-    <!-- ПАРСЕР -->
     <div id="page-parser">
       <div class="topbar">
         <div>
@@ -164,7 +204,9 @@ tr:hover td{background:var(--gray-50)}
                  ondragleave="this.classList.remove('over')"
                  ondrop="handleDrop(event)"
                  onclick="document.getElementById('file-input').click()">
-              <span class="upload-icon">📂</span>
+              <span class="upload-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3-3 3 3"/></svg>
+              </span>
               <div class="upload-title">Перетащи файл или нажми для выбора</div>
               <div class="upload-sub">Накладная, счёт-фактура, счёт на оплату</div>
               <div style="margin-top:1rem">
@@ -191,7 +233,7 @@ tr:hover td{background:var(--gray-50)}
               <div id="result-sub" style="font-size:11px;color:var(--gray-400);margin-top:2px"></div>
               <div id="result-source" style="margin-top:4px"></div>
             </div>
-            <div style="display:flex;gap:8px">
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
               <button class="btn btn-sm" onclick="resetParser()">← Новый файл</button>
               <button class="btn btn-primary btn-sm" onclick="downloadXlsx()">⬇ Скачать xlsx</button>
             </div>
@@ -223,105 +265,44 @@ tr:hover td{background:var(--gray-50)}
       </div>
     </div>
 
-    <!-- БОТ -->
     <div id="page-bot" class="hidden">
       <div class="topbar">
         <div>
           <div class="page-title">Telegram бот</div>
           <div class="page-sub">Статус и активность</div>
         </div>
-        <span class="badge badge-green">● Работает</span>
+        <span class="badge badge-amber">Скоро</span>
       </div>
       <div class="content">
-        <div class="metrics">
-          <div class="metric">
-            <div class="metric-label">Накладных сегодня</div>
-            <div class="metric-value">3</div>
-            <div class="metric-sub">через Telegram</div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">Всего за месяц</div>
-            <div class="metric-value">47</div>
-            <div class="metric-sub">апрель 2026</div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">Сэкономлено времени</div>
-            <div class="metric-value">~4 ч</div>
-            <div class="metric-sub">vs ручной ввод</div>
-          </div>
-        </div>
-        <div class="two-col">
-          <div class="card">
-            <div class="card-header"><div class="card-title">Лог активности</div></div>
-            <div class="card-body" style="padding:0 1.25rem">
-              <div class="log-item">
-                <div class="log-time">14:36</div>
-                <div class="log-icon log-ok">✓</div>
-                <div><div class="log-text">Накладная №102032 обработана</div><div class="log-sub">11 позиций · ТОО Бостан</div></div>
-              </div>
-              <div class="log-item">
-                <div class="log-time">13:21</div>
-                <div class="log-icon log-ok">✓</div>
-                <div><div class="log-text">Счёт УТ-3612 обработан</div><div class="log-sub">5 позиций · Alias Valve Group</div></div>
-              </div>
-              <div class="log-item">
-                <div class="log-time">11:05</div>
-                <div class="log-icon log-ok">✓</div>
-                <div><div class="log-text">Счёт №11418 обработан</div><div class="log-sub">19 позиций · Мир инструмента</div></div>
-              </div>
-              <div class="log-item">
-                <div class="log-time">09:44</div>
-                <div class="log-icon log-info">i</div>
-                <div><div class="log-text">Бот запущен</div><div class="log-sub">MasterKlass · Windows</div></div>
-              </div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="card-header"><div class="card-title">Функции</div></div>
-            <div class="card-body" style="padding:0 1.25rem">
-              <div class="feature-row"><span style="font-size:12px">Парсер накладных → xlsx</span><span class="badge badge-green">активно</span></div>
-              <div class="feature-row"><span style="font-size:12px">Складской учёт</span><span class="badge badge-green">активно</span></div>
-              <div class="feature-row"><span style="font-size:12px">ИИ-ответы по остаткам</span><span class="badge badge-green">активно</span></div>
-              <div class="feature-row"><span style="font-size:12px">Мониторинг цен</span><span class="badge badge-amber">скоро</span></div>
-              <div class="feature-row"><span style="font-size:12px">API-загрузка в Палому</span><span class="badge badge-amber">скоро</span></div>
-            </div>
+        <div class="card">
+          <div class="coming-soon">
+            <div class="coming-soon-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg></div>
+            <h3>Telegram-кабинет в разработке</h3>
+            <p style="font-size:12px;max-width:420px;margin:0 auto">Здесь появятся реальные метрики бота, лог активности и состояние интеграций, когда будет подключён backend для статистики.</p>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ИСТОРИЯ -->
     <div id="page-history" class="hidden">
       <div class="topbar">
         <div>
           <div class="page-title">История обработок</div>
-          <div class="page-sub">Все документы за месяц</div>
+          <div class="page-sub">Архив документов и импортов</div>
         </div>
-        <span class="badge badge-gray">Апрель 2026</span>
+        <span class="badge badge-amber">Скоро</span>
       </div>
       <div class="content">
-        <div class="metrics">
-          <div class="metric"><div class="metric-label">Инвойсов обработано</div><div class="metric-value">47</div></div>
-          <div class="metric"><div class="metric-label">Позиций распознано</div><div class="metric-value">631</div></div>
-          <div class="metric"><div class="metric-label">Точность ИИ</div><div class="metric-value">98%</div></div>
-        </div>
         <div class="card">
-          <div class="card-header"><div class="card-title">Последние документы</div></div>
-          <table>
-            <thead><tr><th>Документ</th><th>Поставщик</th><th>Позиций</th><th>Сумма</th><th>Дата</th><th>Статус</th></tr></thead>
-            <tbody>
-              <tr><td>Накладная №102032</td><td>ТОО «БОСТАН»</td><td>11</td><td>50 890 ₸</td><td>20.04.2026</td><td><span class="tag tag-teal">Импортирован</span></td></tr>
-              <tr><td>Счёт УТ-3612</td><td>Alias Valve Group</td><td>5</td><td>55 262 ₸</td><td>19.04.2026</td><td><span class="tag tag-teal">Импортирован</span></td></tr>
-              <tr><td>Счёт №11418</td><td>Мир инструмента</td><td>19</td><td>110 125 ₸</td><td>18.04.2026</td><td><span class="tag tag-teal">Импортирован</span></td></tr>
-              <tr><td>Счёт-фактура №891</td><td>ТОО «СантехОпт»</td><td>8</td><td>34 400 ₸</td><td>16.04.2026</td><td><span class="tag tag-teal">Импортирован</span></td></tr>
-              <tr><td>Накладная №98761</td><td>ИП Жаксыбеков</td><td>12</td><td>28 750 ₸</td><td>14.04.2026</td><td><span class="tag tag-teal">Импортирован</span></td></tr>
-            </tbody>
-          </table>
+          <div class="coming-soon">
+            <div class="coming-soon-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg></div>
+            <h3>История появится после подключения хранилища</h3>
+            <p style="font-size:12px;max-width:420px;margin:0 auto">Сейчас страница не показывает фиктивные цифры. После сохранения обработок в базу здесь будут реальные документы, суммы, точность и статусы импорта.</p>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- ЦЕНЫ -->
     <div id="page-prices" class="hidden">
       <div class="topbar">
         <div>
@@ -333,9 +314,9 @@ tr:hover td{background:var(--gray-50)}
       <div class="content">
         <div class="card">
           <div class="coming-soon">
-            <div style="font-size:36px">📈</div>
+            <div class="coming-soon-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></div>
             <h3>Мониторинг цен поставщиков</h3>
-            <p style="font-size:12px;max-width:320px;margin:0 auto">Автоматические уведомления в Telegram когда поставщик поднимает цены по сравнению с прошлой накладной</p>
+            <p style="font-size:12px;max-width:320px;margin:0 auto">Автоматические уведомления в Telegram, когда поставщик поднимает цены по сравнению с прошлой накладной.</p>
           </div>
         </div>
       </div>
@@ -354,12 +335,32 @@ const CAT_TAGS = {
   'Другое': ''
 };
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('mobile-overlay').classList.remove('open');
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('mobile-overlay').classList.toggle('open');
+}
+
 function showPage(name, el) {
   ['parser','bot','history','prices'].forEach(p => {
     document.getElementById('page-'+p).classList.toggle('hidden', p !== name);
   });
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   if (el) el.classList.add('active');
+  closeSidebar();
 }
 
 function handleDrop(e) {
@@ -403,8 +404,18 @@ function handleFile(file) {
     });
 }
 
+function setSourceBadge(source) {
+  const sourceEl = document.getElementById('result-source');
+  sourceEl.innerHTML = '';
+  const badge = document.createElement('span');
+  badge.className = source === 'pdfplumber' ? 'badge badge-green' : 'badge badge-gray';
+  badge.style.fontSize = '10px';
+  badge.textContent = source === 'pdfplumber' ? 'pdfplumber — бесплатно' : 'Claude AI — распознан сканом';
+  sourceEl.appendChild(badge);
+}
+
 function renderResult(data) {
-  const items = data.позиции || [];
+  const items = Array.isArray(data.позиции) ? data.позиции : [];
   const supplier = data.поставщик || '';
   const date = data.дата || '';
   const num = data.номер || '';
@@ -414,13 +425,7 @@ function renderResult(data) {
   document.getElementById('result-sub').textContent =
     [supplier, date, `${items.length} позиций`].filter(Boolean).join(' · ');
 
-  const source = data._source || 'claude';
-  const sourceEl = document.getElementById('result-source');
-  if (source === 'pdfplumber') {
-    sourceEl.innerHTML = '<span class="badge badge-green" style="font-size:10px">⚡ pdfplumber — бесплатно</span>';
-  } else {
-    sourceEl.innerHTML = '<span class="badge badge-gray" style="font-size:10px">🤖 Claude AI — распознан сканом</span>';
-  }
+  setSourceBadge(data._source || 'claude');
 
   const tbody = document.getElementById('result-tbody');
   tbody.innerHTML = '';
@@ -430,22 +435,52 @@ function renderResult(data) {
     total += Number(item.сумма) || 0;
     const cat = item.категория || 'Другое';
     const tagClass = CAT_TAGS[cat] || '';
-    const art = item.артикул ? `<span class="art">${item.артикул}</span>` : '—';
     const price = item.цена ? Number(item.цена).toLocaleString('ru') + ' ₸' : '—';
     const summa = item.сумма ? Number(item.сумма).toLocaleString('ru') + ' ₸' : '—';
-    tbody.innerHTML += `<tr>
-      <td style="color:#aaa">${i+1}</td>
-      <td>${item.название || ''}</td>
-      <td>${art}</td>
-      <td>${item.количество || 0} ${item.единица || 'шт'}</td>
-      <td>${price}</td>
-      <td>${summa}</td>
-      <td>${tagClass ? `<span class="tag ${tagClass}">${cat}</span>` : cat}</td>
-    </tr>`;
+
+    const tr = document.createElement('tr');
+
+    const indexTd = document.createElement('td');
+    indexTd.style.color = '#aaa';
+    indexTd.textContent = i + 1;
+
+    const nameTd = document.createElement('td');
+    nameTd.textContent = item.название || '';
+
+    const artTd = document.createElement('td');
+    if (item.артикул) {
+      const artSpan = document.createElement('span');
+      artSpan.className = 'art';
+      artSpan.textContent = item.артикул;
+      artTd.appendChild(artSpan);
+    } else {
+      artTd.textContent = '—';
+    }
+
+    const qtyTd = document.createElement('td');
+    qtyTd.textContent = `${item.количество || 0} ${item.единица || 'шт'}`;
+
+    const priceTd = document.createElement('td');
+    priceTd.textContent = price;
+
+    const sumTd = document.createElement('td');
+    sumTd.textContent = summa;
+
+    const catTd = document.createElement('td');
+    if (tagClass) {
+      const tag = document.createElement('span');
+      tag.className = `tag ${tagClass}`;
+      tag.textContent = cat;
+      catTd.appendChild(tag);
+    } else {
+      catTd.textContent = cat;
+    }
+
+    tr.append(indexTd, nameTd, artTd, qtyTd, priceTd, sumTd, catTd);
+    tbody.appendChild(tr);
   });
 
-  document.getElementById('result-total').textContent =
-    total.toLocaleString('ru') + ' ₸';
+  document.getElementById('result-total').textContent = total.toLocaleString('ru') + ' ₸';
   document.getElementById('result-card').classList.remove('hidden');
 }
 
