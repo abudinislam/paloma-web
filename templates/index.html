@@ -39,6 +39,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .badge-green{background:var(--teal-light);color:var(--teal-dark)}
 .badge-gray{background:var(--gray-100);color:var(--gray-600)}
 .badge-amber{background:var(--amber-light);color:var(--amber-dark)}
+.badge-blue{background:var(--blue-light);color:var(--blue-dark)}
 .content{padding:1.5rem;flex:1;display:flex;flex-direction:column;gap:1.25rem}
 .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .metric{background:var(--gray-50);border-radius:var(--radius-sm);padding:1rem}
@@ -347,6 +348,10 @@ tr:hover td{background:var(--gray-50)}
 <script>
 let parsedData = null;
 
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 const CAT_TAGS = {
   'Электрика': 'tag-teal', 'Сантехника': 'tag-teal',
   'Инструменты': 'tag-blue', 'Отделка': 'tag-blue',
@@ -430,17 +435,17 @@ function renderResult(data) {
     total += Number(item.сумма) || 0;
     const cat = item.категория || 'Другое';
     const tagClass = CAT_TAGS[cat] || '';
-    const art = item.артикул ? `<span class="art">${item.артикул}</span>` : '—';
+    const art = item.артикул ? `<span class="art">${esc(item.артикул)}</span>` : '—';
     const price = item.цена ? Number(item.цена).toLocaleString('ru') + ' ₸' : '—';
     const summa = item.сумма ? Number(item.сумма).toLocaleString('ru') + ' ₸' : '—';
     tbody.innerHTML += `<tr>
       <td style="color:#aaa">${i+1}</td>
-      <td>${item.название || ''}</td>
+      <td>${esc(item.название)}</td>
       <td>${art}</td>
-      <td>${item.количество || 0} ${item.единица || 'шт'}</td>
+      <td>${esc(item.количество || 0)} ${esc(item.единица || 'шт')}</td>
       <td>${price}</td>
       <td>${summa}</td>
-      <td>${tagClass ? `<span class="tag ${tagClass}">${cat}</span>` : cat}</td>
+      <td>${tagClass ? `<span class="tag ${tagClass}">${esc(cat)}</span>` : esc(cat)}</td>
     </tr>`;
   });
 

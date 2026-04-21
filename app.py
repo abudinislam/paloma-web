@@ -13,14 +13,27 @@ from pathlib import Path
 from datetime import datetime
 from html import escape as xml_escape
 
+import anthropic
 from flask import Flask, render_template, request, jsonify, send_file
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import pdfplumber
 from pypdf import PdfReader
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024  # 20 MB
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB
+
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],
+    storage_uri="memory://",
+)
 
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
+if not CLAUDE_API_KEY:
+    raise RuntimeError("CLAUDE_API_KEY не задан. Установи переменную окружения перед запуском.")
+
 TEMPLATE_PATH  = Path("items_template.xlsx")
 
 PALOMA_HEADERS = [
@@ -60,8 +73,6 @@ def detect_category(name):
         return "Стройматериалы"
     return "Другое"
 
-
-import anthropic
 
 # ── pdfplumber парсер (бесплатно, для цифровых PDF) ───────────
 
@@ -174,8 +185,8 @@ def parse_with_pdfplumber(file_bytes):
                         item = parse_product_row(row, col_map)
                         if item:
                             items.append(item)
-    except Exception:
-        pass
+    except Exception as e:
+        app.logger.warning("pdfplumber не смог разобрать файл: %s", e)
     return items, supplier, date_str, number
 
 
@@ -338,12 +349,23 @@ def make_paloma_xlsx(items, supplier):
     return out_path
 
 
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    return jsonify({'error': 'Слишком много запросов. Подождите немного и попробуйте снова.'}), 429
+
+
+@app.errorhandler(413)
+def too_large(e):
+    return jsonify({'error': 'Файл слишком большой. Максимум 10 МБ.'}), 413
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
 
 @app.route('/api/parse', methods=['POST'])
+@limiter.limit("10 per minute; 50 per hour; 100 per day")
 def parse():
     if 'file' not in request.files:
         return jsonify({'error': 'Файл не загружен'}), 400
@@ -379,13 +401,18 @@ def parse():
 
 
 @app.route('/api/download', methods=['POST'])
+@limiter.limit("20 per minute")
 def download():
-    body = request.json
+    body = request.get_json(silent=True)
+    if not body:
+        return jsonify({'error': 'Некорректный запрос'}), 400
     items    = body.get('items', [])
     supplier = body.get('supplier', '')
 
     if not items:
         return jsonify({'error': 'Нет позиций'}), 400
+    if not isinstance(items, list) or len(items) > 500:
+        return jsonify({'error': 'Слишком много позиций (максимум 500)'}), 400
 
     try:
         out_path = make_paloma_xlsx(items, supplier)
@@ -397,6 +424,7 @@ def download():
             download_name=filename,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
+        response.call_on_close(lambda: out_path.unlink(missing_ok=True))
         return response
     except Exception as e:
         return jsonify({'error': str(e)}), 500
