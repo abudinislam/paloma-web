@@ -105,6 +105,9 @@ tr:hover td{background:var(--gray-50)}
 .mobile-nav-btn .m-icon{font-size:20px}
 .mobile-nav-btn.active{color:var(--teal)}
 .empty-state{text-align:center;padding:2rem;color:var(--gray-400);font-size:12px}
+td[contenteditable]{outline:none;cursor:text}
+td[contenteditable]:hover{background:var(--blue-light)!important}
+td[contenteditable]:focus{background:var(--blue-light)!important;box-shadow:inset 0 0 0 1.5px var(--blue-dark)}
 @media(max-width:768px){
   .app{grid-template-columns:1fr}
   .sidebar{display:none}
@@ -474,17 +477,14 @@ function renderResult(data) {
     total += Number(item.сумма) || 0;
     const cat = item.категория || 'Другое';
     const tagClass = CAT_TAGS[cat] || '';
-    const art = item.артикул ? `<span class="art">${esc(item.артикул)}</span>` : '—';
-    const price = item.цена ? Number(item.цена).toLocaleString('ru') + ' ₸' : '—';
-    const summa = item.сумма ? Number(item.сумма).toLocaleString('ru') + ' ₸' : '—';
-    tbody.innerHTML += `<tr>
+    tbody.innerHTML += `<tr data-idx="${i}">
       <td style="color:#aaa">${i+1}</td>
-      <td>${esc(item.название)}</td>
-      <td>${art}</td>
-      <td>${esc(item.количество || 0)} ${esc(item.единица || 'шт')}</td>
-      <td>${price}</td>
-      <td>${summa}</td>
-      <td>${tagClass ? `<span class="tag ${tagClass}">${esc(cat)}</span>` : esc(cat)}</td>
+      <td contenteditable="true" data-field="название">${esc(item.название)}</td>
+      <td contenteditable="true" data-field="артикул" class="art" style="font-family:monospace;font-size:10px">${esc(item.артикул || '')}</td>
+      <td contenteditable="true" data-field="количество" style="width:70px">${esc(item.количество || 0)}</td>
+      <td contenteditable="true" data-field="цена" style="width:85px">${item.цена || 0}</td>
+      <td contenteditable="true" data-field="сумма" style="width:95px">${item.сумма || 0}</td>
+      <td contenteditable="true" data-field="категория">${tagClass ? `<span class="tag ${tagClass}">${esc(cat)}</span>` : esc(cat)}</td>
     </tr>`;
   });
 
@@ -492,12 +492,29 @@ function renderResult(data) {
   document.getElementById('result-card').classList.remove('hidden');
 }
 
+function collectEditedItems() {
+  const rows = document.querySelectorAll('#result-tbody tr[data-idx]');
+  return Array.from(rows).map(tr => {
+    const get = field => tr.querySelector(`[data-field="${field}"]`).innerText.trim();
+    return {
+      название: get('название'),
+      артикул: get('артикул'),
+      количество: Number(get('количество')) || 1,
+      единица: parsedData.позиции[tr.dataset.idx]?.единица || 'шт',
+      цена: parseFloat(get('цена')) || 0,
+      сумма: parseFloat(get('сумма')) || 0,
+      категория: get('категория'),
+    };
+  });
+}
+
 function downloadXlsx() {
   if (!parsedData) return;
+  const items = collectEditedItems();
   fetch('/api/download', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({items: parsedData.позиции, supplier: parsedData.поставщик || ''})
+    body: JSON.stringify({items, supplier: parsedData.поставщик || ''})
   })
   .then(r => {
     const cd = r.headers.get('Content-Disposition') || '';
