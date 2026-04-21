@@ -129,10 +129,7 @@ tr:hover td{background:var(--gray-50)}
       <a class="nav-item active" onclick="showPage('parser',this)">
         <span class="nav-icon">📄</span> Парсер накладных
       </a>
-      <a class="nav-item" onclick="showPage('bot',this)">
-        <span class="nav-icon">🤖</span> Telegram бот
-      </a>
-      <a class="nav-item" onclick="showPage('history',this)">
+<a class="nav-item" onclick="showPage('history',this)">
         <span class="nav-icon">🕐</span> История
       </a>
       <div class="nav-section">Аналитика</div>
@@ -241,55 +238,8 @@ tr:hover td{background:var(--gray-50)}
       </div>
     </div>
 
-    <!-- БОТ -->
-    <div id="page-bot" class="hidden">
-      <div class="topbar">
-        <div>
-          <div class="page-title">Telegram бот</div>
-          <div class="page-sub">Статус и активность</div>
-        </div>
-        <span class="badge badge-green">● Работает</span>
-      </div>
-      <div class="content">
-        <div class="metrics">
-          <div class="metric">
-            <div class="metric-label">Накладных сегодня</div>
-            <div class="metric-value" id="stat-today">0</div>
-            <div class="metric-sub">через веб-интерфейс</div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">Всего за месяц</div>
-            <div class="metric-value" id="stat-month">0</div>
-            <div class="metric-sub" id="stat-month-label">—</div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">Сэкономлено времени</div>
-            <div class="metric-value" id="stat-time">0 мин</div>
-            <div class="metric-sub">~2 мин на накладную</div>
-          </div>
-        </div>
-        <div class="two-col">
-          <div class="card">
-            <div class="card-header"><div class="card-title">Лог активности</div></div>
-            <div class="card-body" style="padding:0 1.25rem" id="bot-log">
-              <div class="empty-state">Пока нет обработанных накладных</div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="card-header"><div class="card-title">Функции</div></div>
-            <div class="card-body" style="padding:0 1.25rem">
-              <div class="feature-row"><span style="font-size:12px">Парсер накладных → xlsx</span><span class="badge badge-green">активно</span></div>
-              <div class="feature-row"><span style="font-size:12px">Складской учёт</span><span class="badge badge-green">активно</span></div>
-              <div class="feature-row"><span style="font-size:12px">ИИ-ответы по остаткам</span><span class="badge badge-green">активно</span></div>
-              <div class="feature-row"><span style="font-size:12px">Мониторинг цен</span><span class="badge badge-amber">скоро</span></div>
-              <div class="feature-row"><span style="font-size:12px">API-загрузка в Палому</span><span class="badge badge-amber">скоро</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
 
-    <!-- ИСТОРИЯ -->
+<!-- ИСТОРИЯ -->
     <div id="page-history" class="hidden">
       <div class="topbar">
         <div>
@@ -302,7 +252,6 @@ tr:hover td{background:var(--gray-50)}
         <div class="metrics">
           <div class="metric"><div class="metric-label">Инвойсов обработано</div><div class="metric-value" id="hist-count">0</div></div>
           <div class="metric"><div class="metric-label">Позиций распознано</div><div class="metric-value" id="hist-items">0</div></div>
-          <div class="metric"><div class="metric-label">Сэкономлено времени</div><div class="metric-value" id="hist-time">0 мин</div></div>
         </div>
         <div class="card">
           <div class="card-header">
@@ -348,10 +297,7 @@ tr:hover td{background:var(--gray-50)}
     <button class="mobile-nav-btn active" onclick="showPage('parser',this)" data-page="parser">
       <span class="m-icon">📄</span>Парсер
     </button>
-    <button class="mobile-nav-btn" onclick="showPage('bot',this)" data-page="bot">
-      <span class="m-icon">🤖</span>Бот
-    </button>
-    <button class="mobile-nav-btn" onclick="showPage('history',this)" data-page="history">
+<button class="mobile-nav-btn" onclick="showPage('history',this)" data-page="history">
       <span class="m-icon">🕐</span>История
     </button>
     <button class="mobile-nav-btn" onclick="showPage('prices',this)" data-page="prices">
@@ -377,7 +323,7 @@ const CAT_TAGS = {
 
 // ── навигация (синхронизирует sidebar + mobile nav) ──────────
 function showPage(name, el) {
-  ['parser','bot','history','prices'].forEach(p => {
+  ['parser','history','prices'].forEach(p => {
     document.getElementById('page-'+p).classList.toggle('hidden', p !== name);
   });
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -386,7 +332,6 @@ function showPage(name, el) {
   // синхронизируем противоположную навигацию
   document.querySelectorAll('[data-page="'+name+'"]').forEach(n => n.classList.add('active'));
   if (name === 'history') renderHistory();
-  if (name === 'bot') renderBotStats();
 }
 
 // ── прогресс-бар (#12) ───────────────────────────────────────
@@ -428,47 +373,16 @@ function saveEntry() { /* сохранение теперь на сервере 
 function clearHistory() {
   if (!confirm('Очистить всю историю?')) return;
   fetch('/api/history/clear', {method:'POST'})
-    .then(() => { renderHistory(); renderBotStats(); });
+    .then(() => { renderHistory(); });
 }
 
-function renderBotStats() {
-  fetch('/api/history')
-    .then(r => r.json())
-    .then(data => {
-      const savedMin = data.total_count * 2;
-      document.getElementById('stat-today').textContent = data.today_count;
-      document.getElementById('stat-month').textContent = data.total_count;
-      document.getElementById('stat-month-label').textContent =
-        new Date().toLocaleString('ru', {month:'long', year:'numeric'});
-      document.getElementById('stat-time').textContent = savedMin >= 60
-        ? `~${Math.round(savedMin/60)} ч` : `~${savedMin} мин`;
-
-      const log = document.getElementById('bot-log');
-      if (!data.entries.length) {
-        log.innerHTML = '<div class="empty-state">Пока нет обработанных накладных</div>';
-        return;
-      }
-      log.innerHTML = data.entries.slice(0,5).map(e => `
-        <div class="log-item">
-          <div class="log-time">${esc(e.time)}</div>
-          <div class="log-icon log-ok">✓</div>
-          <div>
-            <div class="log-text">${esc(e.doc)} обработан</div>
-            <div class="log-sub">${esc(e.items)} позиций · ${esc(e.supplier)}</div>
-          </div>
-        </div>`).join('');
-    });
-}
 
 function renderHistory() {
   fetch('/api/history')
     .then(r => r.json())
     .then(data => {
-      const savedMin = data.total_count * 2;
       document.getElementById('hist-count').textContent = data.total_count;
       document.getElementById('hist-items').textContent = data.total_items;
-      document.getElementById('hist-time').textContent = savedMin >= 60
-        ? `~${Math.round(savedMin/60)} ч` : `~${savedMin} мин`;
 
       const empty = document.getElementById('history-empty');
       const wrap = document.getElementById('history-table-wrap');
@@ -635,8 +549,6 @@ function resetSteps() {
   for (let i = 1; i <= 3; i++) document.getElementById('sl'+i).classList.remove('done');
 }
 
-// инициализация статистики при загрузке
-renderBotStats();
 </script>
 </body>
 </html>
