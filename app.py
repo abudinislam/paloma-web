@@ -48,6 +48,8 @@ PALOMA_HEADERS = [
 
 CLAUDE_PROMPT = """Извлеки все товарные позиции из документа.
 
+Документ может быть повёрнут или сфотографирован под углом — читай текст в любой ориентации.
+
 Верни ТОЛЬКО JSON, без какого-либо текста до или после. Без markdown. Без пояснений.
 
 Формат ответа:
@@ -188,6 +190,23 @@ def parse_with_pdfplumber(file_bytes):
     except Exception as e:
         app.logger.warning("pdfplumber не смог разобрать файл: %s", e)
     return items, supplier, date_str, number
+
+
+def normalize_pdf(file_bytes):
+    """Поворачивает горизонтальные страницы PDF на 90° перед отправкой в Claude."""
+    import io
+    from pypdf import PdfReader, PdfWriter
+    reader = PdfReader(io.BytesIO(file_bytes))
+    writer = PdfWriter()
+    for page in reader.pages:
+        w = float(page.mediabox.width)
+        h = float(page.mediabox.height)
+        if w > h:
+            page.rotate(90)
+        writer.add_page(page)
+    out = io.BytesIO()
+    writer.write(out)
+    return out.getvalue()
 
 
 def recognize_invoice(file_bytes, is_pdf=False):
@@ -379,6 +398,7 @@ def parse():
     try:
         # Шаг 1: пробуем pdfplumber (бесплатно, мгновенно)
         if is_pdf or file_bytes[:4] == b'%PDF':
+            file_bytes = normalize_pdf(file_bytes)
             items, supplier, date_str, number = parse_with_pdfplumber(file_bytes)
             if items:
                 return jsonify({'ok': True, 'data': {
