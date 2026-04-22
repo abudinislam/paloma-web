@@ -6,7 +6,7 @@ from flask import Blueprint, render_template, request, jsonify, send_file
 
 from extensions import db, limiter
 from models import Invoice
-from parsers.pdf import parse_with_pdfplumber
+from parsers.pdf import parse_with_pdfplumber, normalize_pdf
 from parsers.ai import recognize_invoice
 from exporters.xlsx import make_paloma_xlsx
 
@@ -43,6 +43,7 @@ def parse():
 
     try:
         if is_pdf or file_bytes[:4] == b'%PDF':
+            file_bytes = normalize_pdf(file_bytes)
             items, supplier, date_str, number = parse_with_pdfplumber(file_bytes)
             if items:
                 data = {'поставщик': supplier, 'дата': date_str, 'номер': number,

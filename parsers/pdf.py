@@ -94,6 +94,22 @@ def parse_product_row(row, col_map):
             "категория": detect_category(name)}
 
 
+def normalize_pdf(file_bytes):
+    """Поворачивает горизонтальные страницы PDF на 90° перед парсингом."""
+    from pypdf import PdfWriter
+    reader = PdfReader(io.BytesIO(file_bytes))
+    writer = PdfWriter()
+    for page in reader.pages:
+        w = float(page.mediabox.width)
+        h = float(page.mediabox.height)
+        if w > h:
+            page.rotate(90)
+        writer.add_page(page)
+    out = io.BytesIO()
+    writer.write(out)
+    return out.getvalue()
+
+
 def parse_with_pdfplumber(file_bytes):
     """Парсинг цифрового PDF без ИИ. Возвращает (items, supplier, date, number)."""
     items, supplier, date_str, number = [], "", "", ""
