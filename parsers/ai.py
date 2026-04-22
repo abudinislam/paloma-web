@@ -1,6 +1,9 @@
 import json
 import base64
+import logging
 import anthropic
+
+logger = logging.getLogger(__name__)
 
 CLAUDE_PROMPT = """Извлеки все товарные позиции из документа.
 
@@ -52,12 +55,13 @@ def recognize_invoice(file_bytes, api_key, is_pdf=False):
         file_part = {"type": "image", "source": {"type": "base64", "media_type": mime_type, "data": b64}}
 
     response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model="claude-sonnet-4-6",
         max_tokens=4000,
         messages=[{"role": "user", "content": [file_part, {"type": "text", "text": CLAUDE_PROMPT}]}],
     )
 
     raw = response.content[0].text.strip()
+    logger.info("Claude raw response (first 500 chars): %s", raw[:500])
 
     if "```" in raw:
         for chunk in raw.split("```"):
