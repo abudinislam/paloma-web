@@ -54,14 +54,15 @@ def recognize_invoice(file_bytes, api_key, is_pdf=False):
     else:
         file_part = {"type": "image", "source": {"type": "base64", "media_type": mime_type, "data": b64}}
 
-    response = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=4000,
-        messages=[{"role": "user", "content": [file_part, {"type": "text", "text": CLAUDE_PROMPT}]}],
-    )
+    def _call(model):
+        return client.messages.create(
+            model=model,
+            max_tokens=4000,
+            messages=[{"role": "user", "content": [file_part, {"type": "text", "text": CLAUDE_PROMPT}]}],
+        ).content[0].text.strip()
 
-    raw = response.content[0].text.strip()
-    logger.info("Claude raw response (first 500 chars): %s", raw[:500])
+    raw = _call("claude-haiku-4-5-20251001")
+    logger.info("Haiku raw response (first 300 chars): %s", raw[:300])
 
     if "```" in raw:
         for chunk in raw.split("```"):
@@ -76,6 +77,10 @@ def recognize_invoice(file_bytes, api_key, is_pdf=False):
         raw = raw[start:end]
 
     data = json.loads(raw)
+    if not data.get("позиции"):
+        logger.info("Haiku returned 0 items, retrying with Sonnet")
+        raw = _call("claude-sonnet-4-6")
+        data = json.loads(raw)
     for p in data.get("позиции", []):
         if not p.get("категория") or p["категория"] == "Другое":
             p["категория"] = detect_category(p.get("название", ""))
