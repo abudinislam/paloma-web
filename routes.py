@@ -43,14 +43,15 @@ def parse():
 
     try:
         if is_pdf or file_bytes[:4] == b'%PDF':
-            file_bytes = normalize_pdf(file_bytes)
-            items, supplier, date_str, number = parse_with_pdfplumber(file_bytes)
+            normalized = normalize_pdf(file_bytes)
+            items, supplier, date_str, number = parse_with_pdfplumber(normalized)
             if items:
                 data = {'поставщик': supplier, 'дата': date_str, 'номер': number,
                         'позиции': items, '_source': 'pdfplumber'}
                 _save_invoice(data)
                 return jsonify({'ok': True, 'data': data})
 
+        # Передаём Claude оригинал — промпт явно говорит читать в любой ориентации
         data = recognize_invoice(file_bytes, api_key=CLAUDE_API_KEY, is_pdf=is_pdf)
         data['_source'] = 'claude'
         _save_invoice(data)
