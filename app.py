@@ -3,48 +3,20 @@ PalomaBot Web — веб-сервис для парсинга накладных
 Flask + Claude API → xlsx для Paloma365
 """
 import os
-import json
-import base64
-import re
-import zipfile
-import tempfile
-import shutil
-from pathlib import Path
-from datetime import datetime
-from html import escape as xml_escape
-
-import anthropic
-from flask import Flask, render_template, request, jsonify, send_file
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-import pdfplumber
-from pypdf import PdfReader
-
-app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB
-
-limiter = Limiter(
-    get_remote_address,
-    app=app,
-    default_limits=[],
-    storage_uri="memory://",
-)
+from flask import Flask
+from extensions import db, limiter
 
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
 if not CLAUDE_API_KEY:
     raise RuntimeError("CLAUDE_API_KEY не задан. Установи переменную окружения перед запуском.")
 
-TEMPLATE_PATH  = Path("items_template.xlsx")
+app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///paloma.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-PALOMA_HEADERS = [
-    'Справочник товаров', 'Остатки', 'Код', 'Признак группы',
-    'Наименование группы', 'Наименование', 'Цена', 'Штрихкоды',
-    'Артикул', 'Национальный код товара', 'Ед. измерения', 'Услуга',
-    'Весовой', 'Комбо', 'Использовать в меню', 'Plu код',
-    'Подразделение', 'Описание', 'Изображения', 'Категория',
-    'Тип цены:Оптовая', 'Тип цены:Партнерская', 'Организация',
-    'Количество', 'Стоимость', 'Склад', 'Поставщик',
-]
+db.init_app(app)
+limiter.init_app(app)
 
 CLAUDE_PROMPT = """Извлеки все товарные позиции из документа.
 
@@ -449,6 +421,8 @@ def download():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+with app.app_context():
+    db.create_all()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
