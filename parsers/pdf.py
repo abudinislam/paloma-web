@@ -95,16 +95,29 @@ def parse_product_row(row, col_map):
 
 
 def normalize_pdf(file_bytes):
-    """Поворачивает горизонтальные страницы PDF на 90° перед парсингом."""
+    """Поворачивает страницы PDF в портретную ориентацию.
+
+    Проверяет атрибут /Rotate и физические размеры страницы.
+    Для горизонтальных страниц применяет поворот 270° (по часовой стрелке).
+    """
     from pypdf import PdfWriter
     reader = PdfReader(io.BytesIO(file_bytes))
     writer = PdfWriter()
+    changed = False
     for page in reader.pages:
+        existing_rotation = page.rotation  # текущий поворот из метаданных PDF
         w = float(page.mediabox.width)
         h = float(page.mediabox.height)
+        # После применения существующего поворота определяем реальную ориентацию
+        if existing_rotation in (90, 270):
+            w, h = h, w  # поменять местами при 90/270°
         if w > h:
-            page.rotate(90)
+            # Страница горизонтальная — поворачиваем 270° (по часовой = стандарт для сканов)
+            page.rotate(270)
+            changed = True
         writer.add_page(page)
+    if not changed:
+        return file_bytes  # файл уже в порядке, возвращаем оригинал
     out = io.BytesIO()
     writer.write(out)
     return out.getvalue()
