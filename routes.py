@@ -1,8 +1,9 @@
 import json
 import os
 from datetime import datetime, timezone
+from functools import wraps
 
-from flask import Blueprint, render_template, request, jsonify, send_file
+from flask import Blueprint, render_template, request, jsonify, send_file, session, redirect, url_for
 
 from extensions import db, limiter
 from models import Invoice
@@ -12,6 +13,18 @@ from exporters.xlsx import make_paloma_xlsx
 
 bp = Blueprint('main', __name__)
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
+APP_PASSWORD = os.environ.get("APP_PASSWORD", "")
+
+
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('logged_in'):
+            if request.path.startswith('/api/'):
+                return jsonify({'error': 'Требуется авторизация', 'redirect': '/login'}), 401
+            return redirect(url_for('main.login'))
+        return f(*args, **kwargs)
+    return decorated
 
 
 @bp.errorhandler(429)
@@ -24,12 +37,34 @@ def too_large(e):
     return jsonify({'error': 'Файл слишком большой. Максимум 10 МБ.'}), 413
 
 
+@bp.route('/login', methods=['GET', 'POST'])
+def login():
+    if session.get('logged_in'):
+        return redirect(url_for('main.index'))
+    error = None
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        if APP_PASSWORD and password == APP_PASSWORD:
+            session['logged_in'] = True
+            return redirect(url_for('main.index'))
+        error = 'Неверный пароль'
+    return render_template('login.html', error=error)
+
+
+@bp.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('main.login'))
+
+
 @bp.route('/')
+@login_required
 def index():
     return render_template('index.html')
 
 
 @bp.route('/api/parse', methods=['POST'])
+@login_required
 @limiter.limit("10 per minute; 50 per hour; 100 per day")
 def parse():
     if 'file' not in request.files:
@@ -79,6 +114,7 @@ def _save_invoice(data):
 
 
 @bp.route('/api/history')
+@login_required
 def history():
     today = datetime.now(timezone.utc).date()
     rows = Invoice.query.order_by(Invoice.created_at.desc()).limit(50).all()
@@ -95,6 +131,7 @@ def history():
 
 
 @bp.route('/api/history/clear', methods=['POST'])
+@login_required
 def history_clear():
     Invoice.query.delete()
     db.session.commit()
@@ -102,6 +139,7 @@ def history_clear():
 
 
 @bp.route('/api/download', methods=['POST'])
+@login_required
 @limiter.limit("20 per minute")
 def download():
     body = request.get_json(silent=True)

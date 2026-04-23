@@ -10,6 +10,7 @@ if not CLAUDE_API_KEY:
     raise RuntimeError("CLAUDE_API_KEY не задан. Установи переменную окружения перед запуском.")
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-change-in-production')
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///paloma.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
