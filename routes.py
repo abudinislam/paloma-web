@@ -5,7 +5,7 @@ from functools import wraps
 
 from flask import Blueprint, render_template, request, jsonify, send_file, session, redirect, url_for
 
-from extensions import db, limiter
+from extensions import db
 from models import Invoice
 from parsers.pdf import parse_with_pdfplumber, normalize_pdf
 from parsers.ai import recognize_invoice
@@ -25,11 +25,6 @@ def login_required(f):
             return redirect(url_for('main.login'))
         return f(*args, **kwargs)
     return decorated
-
-
-@bp.errorhandler(429)
-def ratelimit_handler(e):
-    return jsonify({'error': 'Слишком много запросов. Подождите немного и попробуйте снова.'}), 429
 
 
 @bp.errorhandler(413)
@@ -65,7 +60,6 @@ def index():
 
 @bp.route('/api/parse', methods=['POST'])
 @login_required
-@limiter.limit("10 per minute; 50 per hour; 100 per day")
 def parse():
     if 'file' not in request.files:
         return jsonify({'error': 'Файл не загружен'}), 400
@@ -140,7 +134,6 @@ def history_clear():
 
 @bp.route('/api/download', methods=['POST'])
 @login_required
-@limiter.limit("20 per minute")
 def download():
     body = request.get_json(silent=True)
     if not body:

@@ -145,9 +145,6 @@ td[contenteditable]:focus{background:var(--blue-light)!important;box-shadow:inse
         <div class="dot"></div>
         <span>Сервис работает</span>
       </div>
-      <div id="rate-display" style="margin-top:8px;font-size:11px;color:var(--gray-400);display:none">
-        Запросов: <span id="rate-remaining">10</span>/10 в мин
-      </div>
       <a href="/logout" style="display:block;margin-top:10px;font-size:12px;color:var(--gray-400);text-decoration:none" onmouseover="this.style.color='var(--gray-800)'" onmouseout="this.style.color='var(--gray-400)'">→ Выйти</a>
     </div>
   </div>
@@ -433,8 +430,6 @@ function handleFile(file) {
 
   fetch('/api/parse', {method:'POST', body: fd})
     .then(r => {
-      const rem = r.headers.get('RateLimit-Remaining');
-      if (rem !== null) updateRateLimit(rem);
       if (r.status === 401) { location.href = '/login'; return null; }
       return r.json();
     })
@@ -568,17 +563,6 @@ function showStep(n) {
   }
   for (let i = 1; i <= 3; i++) {
     document.getElementById('sl'+i).classList.toggle('done', i < n);
-  }
-}
-
-function updateRateLimit(remaining) {
-  const n = parseInt(remaining, 10);
-  const el = document.getElementById('rate-remaining');
-  const wrap = document.getElementById('rate-display');
-  if (el && wrap) {
-    el.textContent = n;
-    el.style.color = n <= 2 ? '#B91C1C' : n <= 5 ? '#B45309' : 'inherit';
-    wrap.style.display = 'block';
   }
 }
 

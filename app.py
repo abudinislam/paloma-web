@@ -3,7 +3,7 @@ Flask + Claude API → xlsx для Paloma365
 """
 import os
 from flask import Flask
-from extensions import db, limiter
+from extensions import db
 
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
 if not CLAUDE_API_KEY:
@@ -16,7 +16,6 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:/
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
-limiter.init_app(app)
 
 from routes import bp  # noqa: E402
 app.register_blueprint(bp)
