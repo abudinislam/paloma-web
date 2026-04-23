@@ -82,6 +82,8 @@ def parse():
                 return jsonify({'ok': True, 'data': data})
 
         data = recognize_invoice(file_bytes, api_key=CLAUDE_API_KEY, is_pdf=is_pdf)
+        if data.get('not_invoice'):
+            return jsonify({'error': 'Документ не похож на накладную или счёт. Загрузите товарный документ.'}), 422
         if not data.get('позиции'):
             return jsonify({'error': 'ИИ не смог извлечь позиции из документа. Проверьте качество файла.'}), 422
         data['_source'] = 'claude'
