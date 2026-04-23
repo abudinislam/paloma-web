@@ -145,6 +145,7 @@ td[contenteditable]:focus{background:var(--blue-light)!important;box-shadow:inse
         <div class="dot"></div>
         <span>Сервис работает</span>
       </div>
+      <a href="/logout" style="display:block;margin-top:10px;font-size:12px;color:var(--gray-400);text-decoration:none" onmouseover="this.style.color='var(--gray-800)'" onmouseout="this.style.color='var(--gray-400)'">→ Выйти</a>
     </div>
   </div>
 
@@ -211,7 +212,8 @@ td[contenteditable]:focus{background:var(--blue-light)!important;box-shadow:inse
             </div>
             <div style="display:flex;gap:8px">
               <button class="btn btn-sm" onclick="resetParser()">← Новый файл</button>
-              <button class="btn btn-primary btn-sm" onclick="downloadXlsx()">⬇ Скачать xlsx</button>
+              <button class="btn btn-sm" onclick="downloadCsv()">⬇ CSV</button>
+              <button class="btn btn-primary btn-sm" onclick="downloadXlsx()">⬇ xlsx Paloma</button>
             </div>
           </div>
           <div class="result-wrap">
@@ -428,8 +430,12 @@ function handleFile(file) {
   fd.append('file', file);
 
   fetch('/api/parse', {method:'POST', body: fd})
-    .then(r => r.json())
+    .then(r => {
+      if (r.status === 401) { location.href = '/login'; return null; }
+      return r.json();
+    })
     .then(res => {
+      if (!res) return;
       stopProgress();
       document.getElementById('processing-card').classList.add('hidden');
       if (res.error) {
@@ -519,6 +525,32 @@ function downloadXlsx() {
   .then(r => {
     const cd = r.headers.get('Content-Disposition') || '';
     const name = (cd.match(/filename=(.+)/) || [])[1] || 'paloma.xlsx';
+    return r.blob().then(b => ({b, name}));
+  })
+  .then(({b, name}) => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(b);
+    a.download = name;
+    a.click();
+  });
+}
+
+function downloadCsv() {
+  if (!parsedData) return;
+  const items = collectEditedItems();
+  fetch('/api/download/csv', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      items,
+      supplier: parsedData.поставщик || '',
+      date: parsedData.дата || '',
+      number: parsedData.номер || '',
+    })
+  })
+  .then(r => {
+    const cd = r.headers.get('Content-Disposition') || '';
+    const name = (cd.match(/filename="?([^"]+)"?/) || [])[1] || 'nakladnaya.csv';
     return r.blob().then(b => ({b, name}));
   })
   .then(({b, name}) => {

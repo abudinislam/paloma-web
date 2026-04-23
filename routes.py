@@ -1,22 +1,31 @@
 import json
 import os
 from datetime import datetime, timezone
+from functools import wraps
 
-from flask import Blueprint, render_template, request, jsonify, send_file
+from flask import Blueprint, render_template, request, jsonify, send_file, session, redirect, url_for
 
-from extensions import db, limiter
+from extensions import db
 from models import Invoice
 from parsers.pdf import parse_with_pdfplumber, normalize_pdf
 from parsers.ai import recognize_invoice
 from exporters.xlsx import make_paloma_xlsx
+from exporters.csv import make_csv
 
 bp = Blueprint('main', __name__)
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
+APP_PASSWORD = os.environ.get("APP_PASSWORD", "")
 
 
-@bp.errorhandler(429)
-def ratelimit_handler(e):
-    return jsonify({'error': 'Слишком много запросов. Подождите немного и попробуйте снова.'}), 429
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('logged_in'):
+            if request.path.startswith('/api/'):
+                return jsonify({'error': 'Требуется авторизация', 'redirect': '/login'}), 401
+            return redirect(url_for('main.login'))
+        return f(*args, **kwargs)
+    return decorated
 
 
 @bp.errorhandler(413)
@@ -24,13 +33,34 @@ def too_large(e):
     return jsonify({'error': 'Файл слишком большой. Максимум 10 МБ.'}), 413
 
 
+@bp.route('/login', methods=['GET', 'POST'])
+def login():
+    if session.get('logged_in'):
+        return redirect(url_for('main.index'))
+    error = None
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        if APP_PASSWORD and password == APP_PASSWORD:
+            session['logged_in'] = True
+            return redirect(url_for('main.index'))
+        error = 'Неверный пароль'
+    return render_template('login.html', error=error)
+
+
+@bp.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('main.login'))
+
+
 @bp.route('/')
+@login_required
 def index():
     return render_template('index.html')
 
 
 @bp.route('/api/parse', methods=['POST'])
-@limiter.limit("10 per minute; 50 per hour; 100 per day")
+@login_required
 def parse():
     if 'file' not in request.files:
         return jsonify({'error': 'Файл не загружен'}), 400
@@ -52,6 +82,8 @@ def parse():
                 return jsonify({'ok': True, 'data': data})
 
         data = recognize_invoice(file_bytes, api_key=CLAUDE_API_KEY, is_pdf=is_pdf)
+        if data.get('not_invoice'):
+            return jsonify({'error': 'Документ не похож на накладную или счёт. Загрузите товарный документ.'}), 422
         if not data.get('позиции'):
             return jsonify({'error': 'ИИ не смог извлечь позиции из документа. Проверьте качество файла.'}), 422
         data['_source'] = 'claude'
@@ -79,6 +111,7 @@ def _save_invoice(data):
 
 
 @bp.route('/api/history')
+@login_required
 def history():
     today = datetime.now(timezone.utc).date()
     rows = Invoice.query.order_by(Invoice.created_at.desc()).limit(50).all()
@@ -95,6 +128,7 @@ def history():
 
 
 @bp.route('/api/history/clear', methods=['POST'])
+@login_required
 def history_clear():
     Invoice.query.delete()
     db.session.commit()
@@ -102,7 +136,7 @@ def history_clear():
 
 
 @bp.route('/api/download', methods=['POST'])
-@limiter.limit("20 per minute")
+@login_required
 def download():
     body = request.get_json(silent=True)
     if not body:
@@ -129,3 +163,28 @@ def download():
         return response
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/api/download/csv', methods=['POST'])
+@login_required
+def download_csv():
+    from flask import Response
+    body = request.get_json(silent=True)
+    if not body:
+        return jsonify({'error': 'Некорректный запрос'}), 400
+    items    = body.get('items', [])
+    supplier = body.get('supplier', '')
+    date_str = body.get('date', '')
+    number   = body.get('number', '')
+
+    if not items:
+        return jsonify({'error': 'Нет позиций'}), 400
+
+    date_tag = datetime.now(timezone.utc).strftime("%d%m%Y_%H%M")
+    filename = f"nakladnaya_{date_tag}.csv"
+    content = make_csv(items, supplier, date_str, number)
+    return Response(
+        content,
+        mimetype='text/csv; charset=utf-8',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+    )
