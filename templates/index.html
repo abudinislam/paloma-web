@@ -145,6 +145,13 @@ td[contenteditable]:focus{background:var(--blue-light)!important;box-shadow:inse
         <div class="dot"></div>
         <span>Сервис работает</span>
       </div>
+      <div id="quota-wrap" style="margin-top:8px;display:none">
+        <div style="font-size:11px;color:var(--gray-400);margin-bottom:4px">Накладных в этом месяце</div>
+        <div style="background:var(--gray-100);border-radius:100px;height:5px;overflow:hidden">
+          <div id="quota-bar" style="height:100%;background:var(--teal);border-radius:100px;transition:width 0.4s"></div>
+        </div>
+        <div style="font-size:11px;margin-top:3px"><span id="quota-remaining" style="font-weight:600"></span> <span id="quota-total" style="color:var(--gray-400)"></span></div>
+      </div>
       <a href="/logout" style="display:block;margin-top:10px;font-size:12px;color:var(--gray-400);text-decoration:none" onmouseover="this.style.color='var(--gray-800)'" onmouseout="this.style.color='var(--gray-400)'">→ Выйти</a>
     </div>
   </div>
@@ -315,6 +322,20 @@ td[contenteditable]:focus{background:var(--blue-light)!important;box-shadow:inse
 let parsedData = null;
 let progressTimer = null;
 
+function loadQuota() {
+  fetch('/api/quota').then(r => r.json()).then(q => {
+    if (q.limit === null) return;
+    const used = q.limit - q.remaining;
+    const pct = Math.round((used / q.limit) * 100);
+    document.getElementById('quota-bar').style.width = pct + '%';
+    document.getElementById('quota-bar').style.background = q.remaining <= 10 ? '#B91C1C' : q.remaining <= 30 ? '#B45309' : 'var(--teal)';
+    document.getElementById('quota-remaining').textContent = `Осталось: ${q.remaining}`;
+    document.getElementById('quota-total').textContent = `из ${q.limit}`;
+    document.getElementById('quota-wrap').style.display = 'block';
+  });
+}
+loadQuota();
+
 // ── утилиты ──────────────────────────────────────────────────
 function esc(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -448,6 +469,7 @@ function handleFile(file) {
       renderResult(res.data);
       showStep(3);
       setTimeout(() => showStep(4), 300);
+      loadQuota();
     })
     .catch(err => {
       stopProgress();

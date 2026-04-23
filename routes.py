@@ -6,7 +6,7 @@ from functools import wraps
 from flask import Blueprint, render_template, request, jsonify, send_file, session, redirect, url_for
 
 from extensions import db
-from models import Invoice
+from models import Invoice, AccessKey
 from parsers.pdf import parse_with_pdfplumber, normalize_pdf
 from parsers.ai import recognize_invoice
 from exporters.xlsx import make_paloma_xlsx
@@ -40,8 +40,10 @@ def login():
     error = None
     if request.method == 'POST':
         password = request.form.get('password', '')
-        if APP_PASSWORD and password == APP_PASSWORD:
+        key = AccessKey.query.filter_by(key_hash=AccessKey.hash(password)).first()
+        if key:
             session['logged_in'] = True
+            session['key_id'] = key.id
             return redirect(url_for('main.index'))
         error = 'Неверный пароль'
     return render_template('login.html', error=error)
@@ -67,6 +69,10 @@ def parse():
     f = request.files['file']
     if not f.filename:
         return jsonify({'error': 'Файл не выбран'}), 400
+
+    key = AccessKey.query.get(session.get('key_id'))
+    if key and key.remaining() <= 0:
+        return jsonify({'error': f'Достигнут лимит {key.monthly_limit} накладных в месяц. Лимит обновится 1-го числа.'}), 429
 
     file_bytes = f.read()
     is_pdf = f.filename.lower().endswith('.pdf')
@@ -97,10 +103,12 @@ def parse():
 
 
 def _save_invoice(data):
+    from flask import session as flask_session
     positions = data.get('позиции', [])
     total = sum(float(p.get('сумма', 0) or 0) for p in positions)
     num = data.get('номер', '')
     entry = Invoice(
+        key_id=flask_session.get('key_id'),
         doc=f"Документ №{num}" if num else "Накладная",
         supplier=data.get('поставщик', '') or '—',
         items_count=len(positions),
@@ -108,6 +116,15 @@ def _save_invoice(data):
     )
     db.session.add(entry)
     db.session.commit()
+
+
+@bp.route('/api/quota')
+@login_required
+def quota():
+    key = AccessKey.query.get(session.get('key_id'))
+    if not key:
+        return jsonify({'remaining': None, 'limit': None})
+    return jsonify({'remaining': key.remaining(), 'limit': key.monthly_limit})
 
 
 @bp.route('/api/history')

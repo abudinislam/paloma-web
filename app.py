@@ -22,6 +22,15 @@ app.register_blueprint(bp)
 
 with app.app_context():
     db.create_all()
+    from models import AccessKey
+    app_password = os.environ.get('APP_PASSWORD', '')
+    if app_password and not AccessKey.query.first():
+        db.session.add(AccessKey(
+            key_hash=AccessKey.hash(app_password),
+            label='Default',
+            monthly_limit=100,
+        ))
+        db.session.commit()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
