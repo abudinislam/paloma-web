@@ -10,6 +10,7 @@ from models import Invoice
 from parsers.pdf import parse_with_pdfplumber, normalize_pdf
 from parsers.ai import recognize_invoice
 from exporters.xlsx import make_paloma_xlsx
+from exporters.csv import make_csv
 
 bp = Blueprint('main', __name__)
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
@@ -160,3 +161,28 @@ def download():
         return response
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/api/download/csv', methods=['POST'])
+@login_required
+def download_csv():
+    from flask import Response
+    body = request.get_json(silent=True)
+    if not body:
+        return jsonify({'error': 'Некорректный запрос'}), 400
+    items    = body.get('items', [])
+    supplier = body.get('supplier', '')
+    date_str = body.get('date', '')
+    number   = body.get('number', '')
+
+    if not items:
+        return jsonify({'error': 'Нет позиций'}), 400
+
+    date_tag = datetime.now(timezone.utc).strftime("%d%m%Y_%H%M")
+    filename = f"nakladnaya_{date_tag}.csv"
+    content = make_csv(items, supplier, date_str, number)
+    return Response(
+        content,
+        mimetype='text/csv; charset=utf-8',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+    )

@@ -212,7 +212,8 @@ td[contenteditable]:focus{background:var(--blue-light)!important;box-shadow:inse
             </div>
             <div style="display:flex;gap:8px">
               <button class="btn btn-sm" onclick="resetParser()">← Новый файл</button>
-              <button class="btn btn-primary btn-sm" onclick="downloadXlsx()">⬇ Скачать xlsx</button>
+              <button class="btn btn-sm" onclick="downloadCsv()">⬇ CSV</button>
+              <button class="btn btn-primary btn-sm" onclick="downloadXlsx()">⬇ xlsx Paloma</button>
             </div>
           </div>
           <div class="result-wrap">
@@ -524,6 +525,32 @@ function downloadXlsx() {
   .then(r => {
     const cd = r.headers.get('Content-Disposition') || '';
     const name = (cd.match(/filename=(.+)/) || [])[1] || 'paloma.xlsx';
+    return r.blob().then(b => ({b, name}));
+  })
+  .then(({b, name}) => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(b);
+    a.download = name;
+    a.click();
+  });
+}
+
+function downloadCsv() {
+  if (!parsedData) return;
+  const items = collectEditedItems();
+  fetch('/api/download/csv', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      items,
+      supplier: parsedData.поставщик || '',
+      date: parsedData.дата || '',
+      number: parsedData.номер || '',
+    })
+  })
+  .then(r => {
+    const cd = r.headers.get('Content-Disposition') || '';
+    const name = (cd.match(/filename="?([^"]+)"?/) || [])[1] || 'nakladnaya.csv';
     return r.blob().then(b => ({b, name}));
   })
   .then(({b, name}) => {
