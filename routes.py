@@ -6,7 +6,7 @@ from functools import wraps
 from flask import Blueprint, render_template, request, jsonify, send_file, session, redirect, url_for
 
 from extensions import db
-from models import Invoice
+from models import Invoice, AccessKey
 from parsers.pdf import parse_with_pdfplumber, normalize_pdf
 from parsers.ai import recognize_invoice
 from exporters.xlsx import make_paloma_xlsx
@@ -14,7 +14,7 @@ from exporters.csv import make_csv
 
 bp = Blueprint('main', __name__)
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
-APP_PASSWORD = os.environ.get("APP_PASSWORD", "")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 
 
 def login_required(f):
@@ -24,6 +24,15 @@ def login_required(f):
             if request.path.startswith('/api/'):
                 return jsonify({'error': 'Требуется авторизация', 'redirect': '/login'}), 401
             return redirect(url_for('main.login'))
+        return f(*args, **kwargs)
+    return decorated
+
+
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('main.admin_login'))
         return f(*args, **kwargs)
     return decorated
 
@@ -40,8 +49,10 @@ def login():
     error = None
     if request.method == 'POST':
         password = request.form.get('password', '')
-        if APP_PASSWORD and password == APP_PASSWORD:
+        key = AccessKey.query.filter_by(key_hash=AccessKey.hash(password)).first()
+        if key:
             session['logged_in'] = True
+            session['key_id'] = key.id
             return redirect(url_for('main.index'))
         error = 'Неверный пароль'
     return render_template('login.html', error=error)
@@ -67,6 +78,10 @@ def parse():
     f = request.files['file']
     if not f.filename:
         return jsonify({'error': 'Файл не выбран'}), 400
+
+    key = AccessKey.query.get(session.get('key_id'))
+    if key and key.remaining() <= 0:
+        return jsonify({'error': f'Достигнут лимит {key.monthly_limit} накладных в месяц. Лимит обновится 1-го числа.'}), 429
 
     file_bytes = f.read()
     is_pdf = f.filename.lower().endswith('.pdf')
@@ -97,10 +112,12 @@ def parse():
 
 
 def _save_invoice(data):
+    from flask import session as flask_session
     positions = data.get('позиции', [])
     total = sum(float(p.get('сумма', 0) or 0) for p in positions)
     num = data.get('номер', '')
     entry = Invoice(
+        key_id=flask_session.get('key_id'),
         doc=f"Документ №{num}" if num else "Накладная",
         supplier=data.get('поставщик', '') or '—',
         items_count=len(positions),
@@ -108,6 +125,15 @@ def _save_invoice(data):
     )
     db.session.add(entry)
     db.session.commit()
+
+
+@bp.route('/api/quota')
+@login_required
+def quota():
+    key = AccessKey.query.get(session.get('key_id'))
+    if not key:
+        return jsonify({'remaining': None, 'limit': None})
+    return jsonify({'remaining': key.remaining(), 'limit': key.monthly_limit})
 
 
 @bp.route('/api/history')
@@ -188,3 +214,67 @@ def download_csv():
         mimetype='text/csv; charset=utf-8',
         headers={'Content-Disposition': f'attachment; filename="{filename}"'}
     )
+
+
+# ── Admin panel ───────────────────────────────────────────────
+
+@bp.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    if session.get('admin_logged_in'):
+        return redirect(url_for('main.admin'))
+    error = None
+    if request.method == 'POST':
+        if ADMIN_PASSWORD and request.form.get('password') == ADMIN_PASSWORD:
+            session['admin_logged_in'] = True
+            return redirect(url_for('main.admin'))
+        error = 'Неверный пароль'
+    return render_template('admin_login.html', error=error)
+
+
+@bp.route('/admin/logout')
+def admin_logout():
+    session.pop('admin_logged_in', None)
+    return redirect(url_for('main.admin_login'))
+
+
+@bp.route('/admin')
+@admin_required
+def admin():
+    keys = AccessKey.query.order_by(AccessKey.created_at.desc()).all()
+    stats = [{
+        'id': k.id,
+        'label': k.label or '—',
+        'monthly_limit': k.monthly_limit,
+        'used': k.monthly_usage(),
+        'remaining': k.remaining(),
+        'created_at': k.created_at.strftime('%d.%m.%Y'),
+    } for k in keys]
+    return render_template('admin.html', keys=stats)
+
+
+@bp.route('/admin/keys/add', methods=['POST'])
+@admin_required
+def admin_key_add():
+    label    = request.form.get('label', '').strip()
+    password = request.form.get('password', '').strip()
+    limit    = int(request.form.get('limit', 100))
+    if not password:
+        return redirect(url_for('main.admin'))
+    existing = AccessKey.query.filter_by(key_hash=AccessKey.hash(password)).first()
+    if not existing:
+        db.session.add(AccessKey(
+            key_hash=AccessKey.hash(password),
+            label=label,
+            monthly_limit=limit,
+        ))
+        db.session.commit()
+    return redirect(url_for('main.admin'))
+
+
+@bp.route('/admin/keys/<int:key_id>/delete', methods=['POST'])
+@admin_required
+def admin_key_delete(key_id):
+    key = AccessKey.query.get_or_404(key_id)
+    db.session.delete(key)
+    db.session.commit()
+    return redirect(url_for('main.admin'))
