@@ -65,9 +65,29 @@ def logout():
 
 
 @bp.route('/')
-@login_required
 def index():
-    return render_template('index.html')
+    return render_template('app.html')
+
+
+@bp.route('/api/login', methods=['POST'])
+def api_login():
+    data = request.get_json(silent=True) or {}
+    password = data.get('password', '').strip()
+    if not password:
+        return jsonify({'error': 'Введите пароль'}), 400
+    key = AccessKey.query.filter_by(key_hash=AccessKey.hash(password)).first()
+    if not key:
+        return jsonify({'error': 'Неверный пароль'}), 401
+    session['logged_in'] = True
+    session['key_id'] = key.id
+    return jsonify({'ok': True})
+
+
+@bp.route('/api/logout', methods=['POST'])
+def api_logout():
+    session.pop('logged_in', None)
+    session.pop('key_id', None)
+    return jsonify({'ok': True})
 
 
 @bp.route('/api/parse', methods=['POST'])
