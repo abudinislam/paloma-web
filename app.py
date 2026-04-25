@@ -1,4 +1,4 @@
-"""PalomaBot Web — веб-сервис для парсинга накладных
+"""ScanlyAi — умное распознавание накладных
 Flask + Claude API → xlsx для Paloma365
 """
 import os

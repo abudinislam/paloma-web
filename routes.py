@@ -3,7 +3,7 @@ import os
 from datetime import datetime, timezone
 from functools import wraps
 
-from flask import Blueprint, render_template, request, jsonify, send_file, session, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, send_file, session, redirect, url_for, flash
 
 from extensions import db
 from models import Invoice, AccessKey
@@ -261,13 +261,16 @@ def admin_key_add():
     if not password:
         return redirect(url_for('main.admin'))
     existing = AccessKey.query.filter_by(key_hash=AccessKey.hash(password)).first()
-    if not existing:
+    if existing:
+        flash('Этот пароль уже используется другим клиентом. Придумайте другой.', 'error')
+    else:
         db.session.add(AccessKey(
             key_hash=AccessKey.hash(password),
             label=label,
             monthly_limit=limit,
         ))
         db.session.commit()
+        flash(f'Клиент «{label or password}» добавлен.', 'success')
     return redirect(url_for('main.admin'))
 
 

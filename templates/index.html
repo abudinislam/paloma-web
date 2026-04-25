@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PalomaBot — автоматизация накладных</title>
+<title>ScanlyAi — умное распознавание накладных</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -124,21 +124,19 @@ td[contenteditable]:focus{background:var(--blue-light)!important;box-shadow:inse
 <div class="app">
   <div class="sidebar">
     <div class="sidebar-header">
-      <div class="logo">Paloma<span>Bot</span></div>
-      <div class="logo-sub">Автоматизация закупок</div>
+      <div class="logo">Scanly<span>Ai</span></div>
+      <div class="logo-sub">Умное распознавание накладных</div>
     </div>
     <nav class="nav">
       <div class="nav-section">Основное</div>
       <a class="nav-item active" onclick="showPage('parser',this)">
         <span class="nav-icon">📄</span> Парсер накладных
       </a>
+<!-- ИСТОРИЯ (скрыто для приватности — раскомментировать при необходимости)
 <a class="nav-item" onclick="showPage('history',this)">
         <span class="nav-icon">🕐</span> История
       </a>
-      <div class="nav-section">Аналитика</div>
-      <a class="nav-item" onclick="showPage('prices',this)">
-        <span class="nav-icon">📈</span> Мониторинг цен
-      </a>
+-->
     </nav>
     <div class="sidebar-footer">
       <div class="status-row">
@@ -152,6 +150,7 @@ td[contenteditable]:focus{background:var(--blue-light)!important;box-shadow:inse
         </div>
         <div style="font-size:11px;margin-top:3px"><span id="quota-remaining" style="font-weight:600"></span> <span id="quota-total" style="color:var(--gray-400)"></span></div>
       </div>
+      <div style="margin-top:8px;font-size:11px;color:var(--gray-400)">🔒 Файлы обрабатываются и сразу удаляются — ничего не сохраняется</div>
       <a href="/logout" style="display:block;margin-top:10px;font-size:12px;color:var(--gray-400);text-decoration:none" onmouseover="this.style.color='var(--gray-800)'" onmouseout="this.style.color='var(--gray-400)'">→ Выйти</a>
     </div>
   </div>
@@ -251,7 +250,7 @@ td[contenteditable]:focus{background:var(--blue-light)!important;box-shadow:inse
     </div>
 
 
-<!-- ИСТОРИЯ -->
+<!-- ИСТОРИЯ (скрыто для приватности — раскомментировать при необходимости)
     <div id="page-history" class="hidden">
       <div class="topbar">
         <div>
@@ -280,26 +279,8 @@ td[contenteditable]:focus{background:var(--blue-light)!important;box-shadow:inse
         </div>
       </div>
     </div>
+-->
 
-    <!-- ЦЕНЫ -->
-    <div id="page-prices" class="hidden">
-      <div class="topbar">
-        <div>
-          <div class="page-title">Мониторинг цен</div>
-          <div class="page-sub">Сравнение с прошлыми поставками</div>
-        </div>
-        <span class="badge badge-amber">В разработке</span>
-      </div>
-      <div class="content">
-        <div class="card">
-          <div class="coming-soon">
-            <div style="font-size:36px">📈</div>
-            <h3>Мониторинг цен поставщиков</h3>
-            <p style="font-size:12px;max-width:320px;margin:0 auto">Автоматические уведомления в Telegram когда поставщик поднимает цены по сравнению с прошлой накладной</p>
-          </div>
-        </div>
-      </div>
-    </div>
 
   </div>
 </div>
@@ -309,9 +290,11 @@ td[contenteditable]:focus{background:var(--blue-light)!important;box-shadow:inse
     <button class="mobile-nav-btn active" onclick="showPage('parser',this)" data-page="parser">
       <span class="m-icon">📄</span>Парсер
     </button>
+<!-- ИСТОРИЯ (скрыто для приватности — раскомментировать при необходимости)
 <button class="mobile-nav-btn" onclick="showPage('history',this)" data-page="history">
       <span class="m-icon">🕐</span>История
     </button>
+-->
     <button class="mobile-nav-btn" onclick="showPage('prices',this)" data-page="prices">
       <span class="m-icon">📈</span>Цены
     </button>
@@ -349,15 +332,14 @@ const CAT_TAGS = {
 
 // ── навигация (синхронизирует sidebar + mobile nav) ──────────
 function showPage(name, el) {
-  ['parser','history','prices'].forEach(p => {
+  ['parser','prices'].forEach(p => {
     document.getElementById('page-'+p).classList.toggle('hidden', p !== name);
   });
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.querySelectorAll('.mobile-nav-btn').forEach(n => n.classList.remove('active'));
   if (el) el.classList.add('active');
-  // синхронизируем противоположную навигацию
   document.querySelectorAll('[data-page="'+name+'"]').forEach(n => n.classList.add('active'));
-  if (name === 'history') renderHistory();
+  // if (name === 'history') renderHistory(); // история скрыта для приватности
 }
 
 // ── прогресс-бар (#12) ───────────────────────────────────────
@@ -393,15 +375,15 @@ function stopProgress() {
   document.getElementById('progress-sub').textContent = '';
 }
 
-// ── история через API ─────────────────────────────────────────
-function saveEntry() { /* сохранение теперь на сервере в /api/parse */ }
+// ── история через API (скрыта для приватности — раскомментировать при необходимости) ───
+/*
+function saveEntry() { }
 
 function clearHistory() {
   if (!confirm('Очистить всю историю?')) return;
   fetch('/api/history/clear', {method:'POST'})
     .then(() => { renderHistory(); });
 }
-
 
 function renderHistory() {
   fetch('/api/history')
@@ -430,6 +412,7 @@ function renderHistory() {
         </tr>`).join('');
     });
 }
+*/
 
 // ── загрузка файла ────────────────────────────────────────────
 function handleDrop(e) {
