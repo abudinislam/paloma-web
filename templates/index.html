@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PalomaBot — автоматизация накладных</title>
+<title>ScanlyAi — умное распознавание накладных</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -124,8 +124,8 @@ td[contenteditable]:focus{background:var(--blue-light)!important;box-shadow:inse
 <div class="app">
   <div class="sidebar">
     <div class="sidebar-header">
-      <div class="logo">Paloma<span>Bot</span></div>
-      <div class="logo-sub">Автоматизация закупок</div>
+      <div class="logo">Scanly<span>Ai</span></div>
+      <div class="logo-sub">Умное распознавание накладных</div>
     </div>
     <nav class="nav">
       <div class="nav-section">Основное</div>
@@ -137,10 +137,6 @@ td[contenteditable]:focus{background:var(--blue-light)!important;box-shadow:inse
         <span class="nav-icon">🕐</span> История
       </a>
 -->
-      <div class="nav-section">Аналитика</div>
-      <a class="nav-item" onclick="showPage('prices',this)">
-        <span class="nav-icon">📈</span> Мониторинг цен
-      </a>
     </nav>
     <div class="sidebar-footer">
       <div class="status-row">
@@ -285,25 +281,6 @@ td[contenteditable]:focus{background:var(--blue-light)!important;box-shadow:inse
     </div>
 -->
 
-    <!-- ЦЕНЫ -->
-    <div id="page-prices" class="hidden">
-      <div class="topbar">
-        <div>
-          <div class="page-title">Мониторинг цен</div>
-          <div class="page-sub">Сравнение с прошлыми поставками</div>
-        </div>
-        <span class="badge badge-amber">В разработке</span>
-      </div>
-      <div class="content">
-        <div class="card">
-          <div class="coming-soon">
-            <div style="font-size:36px">📈</div>
-            <h3>Мониторинг цен поставщиков</h3>
-            <p style="font-size:12px;max-width:320px;margin:0 auto">Автоматические уведомления в Telegram когда поставщик поднимает цены по сравнению с прошлой накладной</p>
-          </div>
-        </div>
-      </div>
-    </div>
 
   </div>
 </div>
