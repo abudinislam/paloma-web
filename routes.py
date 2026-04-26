@@ -3,9 +3,9 @@ import os
 from datetime import datetime, timezone
 from functools import wraps
 
-from flask import Blueprint, render_template, request, jsonify, send_file, session, redirect, url_for, flash
+from flask import Blueprint, render_template, request, jsonify, send_file, session, redirect, url_for, flash, current_app
 
-from extensions import db
+from extensions import db, limiter
 from models import Invoice, AccessKey
 from parsers.pdf import parse_with_pdfplumber, normalize_pdf
 from parsers.ai import recognize_invoice
@@ -49,7 +49,7 @@ def login():
     error = None
     if request.method == 'POST':
         password = request.form.get('password', '')
-        key = AccessKey.query.filter_by(key_hash=AccessKey.hash(password)).first()
+        key = AccessKey.find_by_password(password)
         if key:
             session['logged_in'] = True
             session['key_id'] = key.id
@@ -70,12 +70,13 @@ def index():
 
 
 @bp.route('/api/login', methods=['POST'])
+@limiter.limit("5 per minute")
 def api_login():
     data = request.get_json(silent=True) or {}
     password = data.get('password', '').strip()
     if not password:
         return jsonify({'error': 'Введите пароль'}), 400
-    key = AccessKey.query.filter_by(key_hash=AccessKey.hash(password)).first()
+    key = AccessKey.find_by_password(password)
     if not key:
         return jsonify({'error': 'Неверный пароль'}), 401
     session['logged_in'] = True
@@ -128,7 +129,8 @@ def parse():
     except json.JSONDecodeError:
         return jsonify({'error': 'ИИ вернул некорректный ответ, попробуйте ещё раз'}), 500
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('parse error: %s', e, exc_info=True)
+        return jsonify({'error': 'Внутренняя ошибка сервера. Попробуйте ещё раз.'}), 500
 
 
 def _save_invoice(data):
@@ -280,7 +282,7 @@ def admin_key_add():
     limit    = int(request.form.get('limit', 100))
     if not password:
         return redirect(url_for('main.admin'))
-    existing = AccessKey.query.filter_by(key_hash=AccessKey.hash(password)).first()
+    existing = AccessKey.find_by_password(password)
     if existing:
         flash('Этот пароль уже используется другим клиентом. Придумайте другой.', 'error')
     else:

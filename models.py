@@ -1,18 +1,33 @@
 import hashlib
+import bcrypt
 from datetime import datetime, timezone
 from extensions import db
 
 
 class AccessKey(db.Model):
     id            = db.Column(db.Integer, primary_key=True)
-    key_hash      = db.Column(db.String(64), unique=True, nullable=False)
+    key_hash      = db.Column(db.String(128), unique=True, nullable=False)
     label         = db.Column(db.String(100), default='')
     monthly_limit = db.Column(db.Integer, default=100)
     created_at    = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     @staticmethod
     def hash(password):
-        return hashlib.sha256(password.encode()).hexdigest()
+        return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+    @staticmethod
+    def verify(password, stored_hash):
+        if stored_hash.startswith('$2b$') or stored_hash.startswith('$2a$'):
+            return bcrypt.checkpw(password.encode(), stored_hash.encode())
+        # обратная совместимость со старыми SHA256 хэшами
+        return hashlib.sha256(password.encode()).hexdigest() == stored_hash
+
+    @classmethod
+    def find_by_password(cls, password):
+        for key in cls.query.all():
+            if cls.verify(password, key.key_hash):
+                return key
+        return None
 
     def monthly_usage(self):
         today = datetime.now(timezone.utc)
