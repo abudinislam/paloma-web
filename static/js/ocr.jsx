@@ -45,18 +45,19 @@ async function downloadCSV(rows,supplier,date,number){
 }
 
 /* —— UPLOAD ZONE —— */
-function UploadZone({onUpload}){
+function UploadZone({onUpload,disabled}){
   const [drag,setDrag]=useState(false);
   const ref=useRef();
-  const handle=files=>{if(files&&files.length>0)onUpload(files[0]);};
+  const handle=files=>{if(!disabled&&files&&files.length>0)onUpload(files[0]);};
   return(
-    <div onDragOver={e=>{e.preventDefault();setDrag(true);}}
+    <div onDragOver={e=>{if(!disabled){e.preventDefault();setDrag(true);}}}
       onDragLeave={()=>setDrag(false)}
       onDrop={e=>{e.preventDefault();setDrag(false);handle(e.dataTransfer.files);}}
-      onClick={()=>ref.current.click()}
+      onClick={()=>!disabled&&ref.current.click()}
       style={{border:`2px dashed ${drag?'var(--acc)':'var(--bdr)'}`,borderRadius:16,
+        opacity:disabled?.5:1,cursor:disabled?'not-allowed':'pointer',
         background:drag?'var(--accl)':'oklch(0.98 0.004 200)',
-        padding:'56px 32px',cursor:'pointer',textAlign:'center',transition:'all .2s'}}>
+        padding:'56px 32px',textAlign:'center',transition:'all .2s'}}>
       <input ref={ref} type="file" accept=".pdf,.jpg,.jpeg,.png" style={{display:'none'}}
         onChange={e=>handle(e.target.files)}/>
       <div style={{width:60,height:60,borderRadius:16,background:drag?'var(--acc)':'var(--accl)',
@@ -149,7 +150,7 @@ function ResultTable({rows,setRows,format}){
                     onChange={()=>setRows(r=>r.map(x=>({...x,checked:!all})))}
                     style={{cursor:'pointer',accentColor:'var(--acc)'}}/>
                 </th>
-                {['Наименование','Артикул','Ед.','Кол-во','Цена, ₸','Сумма, ₸','НДС'].map(h=>(
+                {['Наименование','Артикул','Ед.','Кол-во','Цена, ₸','Сумма, ₸'].map(h=>(
                   <th key={h} style={{padding:'9px 12px',textAlign:'left',borderBottom:'1px solid var(--bdr)',
                     color:'var(--t2)',fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',whiteSpace:'nowrap'}}>{h}</th>
                 ))}
@@ -170,7 +171,7 @@ function ResultTable({rows,setRows,format}){
                   <td style={{padding:'10px 12px',borderBottom:'1px solid var(--bdr)'}}><ECell val={r.qty} onSave={v=>upd(r.id,'qty',v)} num/></td>
                   <td style={{padding:'10px 12px',borderBottom:'1px solid var(--bdr)'}}><ECell val={r.price} onSave={v=>upd(r.id,'price',v)} num/></td>
                   <td style={{padding:'10px 12px',borderBottom:'1px solid var(--bdr)',fontWeight:600,color:'var(--t1)',whiteSpace:'nowrap'}}>{money(r.total)}</td>
-                  <td style={{padding:'10px 12px',borderBottom:'1px solid var(--bdr)'}}><Badge tone="warn">{r.vat}%</Badge></td>
+
                   <td style={{padding:'10px 8px',borderBottom:'1px solid var(--bdr)'}}>
                     <button onClick={()=>setRows(rr=>rr.filter(x=>x.id!==r.id))}
                       style={{background:'none',border:'none',cursor:'pointer',color:'var(--t3)',padding:'3px',borderRadius:5,display:'flex',alignItems:'center'}}
@@ -198,6 +199,7 @@ function OcrPage({setPage,onLogout}){
   const [format,setFormat]=useState('paloma_add');
   const [rows,setRows]=useState([]);
   const [quota,setQuota]=useState(null);
+  const [uploading,setUploading]=useState(false);
 
   const FORMAT_OPTIONS=[
     {id:'paloma_add',label:'Paloma 365 — Добавление товара'},
@@ -210,6 +212,8 @@ function OcrPage({setPage,onLogout}){
   },[stage]);
 
   const handleUpload=f=>{
+    if(uploading)return;
+    setUploading(true);
     setFilename(f.name);
     setStage('scanning');
     const fd=new FormData();
@@ -240,7 +244,8 @@ function OcrPage({setPage,onLogout}){
           setStage('upload');
         }
       })
-      .catch(()=>{add('Ошибка соединения','err');setStage('upload');});
+      .catch(()=>{add('Ошибка соединения','err');setStage('upload');})
+      .finally(()=>setUploading(false));
   };
 
   const handleDemo=()=>handleUpload(new File([new Uint8Array(1)],'demo_накладная_Adidas_2026.pdf',{type:'application/pdf'}));
@@ -354,13 +359,13 @@ function OcrPage({setPage,onLogout}){
                   <div style={{fontSize:10,fontWeight:700,color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:12}}>
                     Загрузка файла
                   </div>
-                  <UploadZone onUpload={handleUpload}/>
+                  <UploadZone onUpload={handleUpload} disabled={uploading}/>
                   <div style={{textAlign:'center',marginTop:14}}>
-                    <button onClick={handleDemo}
-                      style={{background:'none',border:'1.5px solid var(--bdr)',cursor:'pointer',
+                    <button onClick={handleDemo} disabled={uploading}
+                      style={{background:'none',border:'1.5px solid var(--bdr)',cursor:uploading?'not-allowed':'pointer',
                         fontSize:12,fontWeight:600,color:'var(--t2)',padding:'7px 16px',borderRadius:8,
-                        display:'inline-flex',alignItems:'center',gap:6,transition:'all .15s'}}
-                      onMouseEnter={e=>e.currentTarget.style.borderColor='var(--acc)'}
+                        display:'inline-flex',alignItems:'center',gap:6,transition:'all .15s',opacity:uploading?.4:1}}
+                      onMouseEnter={e=>{if(!uploading)e.currentTarget.style.borderColor='var(--acc)';}}
                       onMouseLeave={e=>e.currentTarget.style.borderColor='var(--bdr)'}>
                       <IcoFile/> Попробовать демо-файл
                     </button>

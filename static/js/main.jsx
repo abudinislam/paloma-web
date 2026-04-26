@@ -15,7 +15,7 @@ function App(){
   },[]);
 
   const navigate=p=>{
-    const protected_=['app','cabinet','settings'];
+    const protected_=['app','cabinet'];
     if(protected_.includes(p)&&!loggedIn){
       setPage('auth');
     } else {
@@ -41,7 +41,7 @@ function App(){
     case 'auth':     return <AuthPage     {...props}/>;
     case 'app':      return <OcrPage      {...props}/>;
     case 'cabinet':  return <CabinetPage  {...props}/>;
-    case 'settings': return <SettingsPage {...props}/>;
+
     default:         return <LandingPage  {...props}/>;
   }
 }
