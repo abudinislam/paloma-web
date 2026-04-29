@@ -8,15 +8,21 @@ const MOCK_ROWS=[
 ];
 
 /* —— DOWNLOAD HELPERS —— */
-async function downloadPaloma(rows,supplier){
-  const items=rows.filter(r=>r.checked).map(r=>({
+async function downloadPaloma(rows,supplier,format){
+  const checked=rows.filter(r=>r.checked);
+  const items=checked.map(r=>({
     название:r.name, артикул:r.article, единица:r.unit,
     количество:r.qty, цена:r.price, сумма:r.total,
   }));
-  const res=await fetch('/api/download',{
+
+  const isIn=format==='paloma_in';
+  const url=isIn?'/api/download/paloma-in':'/api/download';
+  const body=isIn?{items}:{items,supplier:supplier||''};
+
+  const res=await fetch(url,{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({items,supplier:supplier||''})
+    body:JSON.stringify(body)
   });
   if(!res.ok)throw new Error('Ошибка скачивания');
   const blob=await res.blob();
@@ -257,7 +263,7 @@ function OcrPage({setPage,onLogout}){
       if(format==='csv'){
         await downloadCSV(rows,supplier,docDate,docNum);
       } else {
-        await downloadPaloma(rows,supplier);
+        await downloadPaloma(rows,supplier,format);
       }
       add(`Скачано · ${FORMAT_OPTIONS.find(f=>f.id===format)?.label}`,'ok');
     } catch(e){
