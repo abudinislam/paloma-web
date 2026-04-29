@@ -10,6 +10,7 @@ from models import Invoice, AccessKey
 from parsers.pdf import parse_with_pdfplumber, normalize_pdf
 from parsers.ai import recognize_invoice
 from exporters.xlsx import make_paloma_xlsx
+from exporters.paloma_in import make_paloma_in_xlsx
 from exporters.csv import make_csv
 
 bp = Blueprint('main', __name__)
@@ -211,6 +212,34 @@ def download():
         return response
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/api/download/paloma-in', methods=['POST'])
+@login_required
+def download_paloma_in():
+    body = request.get_json(silent=True)
+    if not body:
+        return jsonify({'error': 'Некорректный запрос'}), 400
+    items = body.get('items', [])
+    if not items:
+        return jsonify({'error': 'Нет позиций'}), 400
+    if not isinstance(items, list) or len(items) > 500:
+        return jsonify({'error': 'Слишком много позиций (максимум 500)'}), 400
+    try:
+        out_path = make_paloma_in_xlsx(items)
+        date_tag = datetime.now(timezone.utc).strftime("%d%m%Y_%H%M")
+        filename = f"paloma_in_{date_tag}.xlsx"
+        response = send_file(
+            str(out_path),
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response.call_on_close(lambda: out_path.unlink(missing_ok=True))
+        return response
+    except Exception as e:
+        current_app.logger.error('paloma-in download error: %s', e, exc_info=True)
+        return jsonify({'error': 'Внутренняя ошибка сервера. Попробуйте ещё раз.'}), 500
 
 
 @bp.route('/api/download/csv', methods=['POST'])
