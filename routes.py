@@ -49,13 +49,18 @@ def login():
         return redirect(url_for('main.index'))
     error = None
     if request.method == 'POST':
-        password = request.form.get('password', '')
-        key = AccessKey.find_by_password(password)
+        login_val = request.form.get('login', '').strip()
+        password  = request.form.get('password', '').strip()
+        key = None
+        if login_val:
+            key = AccessKey.find_by_login_password(login_val, password)
+        if not key:
+            key = AccessKey.find_by_password(password)
         if key:
             session['logged_in'] = True
             session['key_id'] = key.id
             return redirect(url_for('main.index'))
-        error = 'Неверный пароль'
+        error = 'Неверный логин или пароль'
     return render_template('login.html', error=error)
 
 
@@ -73,13 +78,18 @@ def index():
 @bp.route('/api/login', methods=['POST'])
 @limiter.limit("5 per minute")
 def api_login():
-    data = request.get_json(silent=True) or {}
-    password = data.get('password', '').strip()
+    data      = request.get_json(silent=True) or {}
+    login_val = data.get('login', '').strip()
+    password  = data.get('password', '').strip()
     if not password:
         return jsonify({'error': 'Введите пароль'}), 400
-    key = AccessKey.find_by_password(password)
+    key = None
+    if login_val:
+        key = AccessKey.find_by_login_password(login_val, password)
     if not key:
-        return jsonify({'error': 'Неверный пароль'}), 401
+        key = AccessKey.find_by_password(password)
+    if not key:
+        return jsonify({'error': 'Неверный логин или пароль'}), 401
     session['logged_in'] = True
     session['key_id'] = key.id
     return jsonify({'ok': True})
@@ -293,12 +303,13 @@ def admin_logout():
 def admin():
     keys = AccessKey.query.order_by(AccessKey.created_at.desc()).all()
     stats = [{
-        'id': k.id,
-        'label': k.label or '—',
+        'id':            k.id,
+        'login':         k.login or '—',
+        'label':         k.label or '—',
         'monthly_limit': k.monthly_limit,
-        'used': k.monthly_usage(),
-        'remaining': k.remaining(),
-        'created_at': k.created_at.strftime('%d.%m.%Y'),
+        'used':          k.monthly_usage(),
+        'remaining':     k.remaining(),
+        'created_at':    k.created_at.strftime('%d.%m.%Y'),
     } for k in keys]
     return render_template('admin.html', keys=stats)
 
@@ -306,22 +317,47 @@ def admin():
 @bp.route('/admin/keys/add', methods=['POST'])
 @admin_required
 def admin_key_add():
-    label    = request.form.get('label', '').strip()
-    password = request.form.get('password', '').strip()
-    limit    = int(request.form.get('limit', 100))
-    if not password:
+    login_val = request.form.get('login', '').strip()
+    label     = request.form.get('label', '').strip()
+    password  = request.form.get('password', '').strip()
+    limit     = int(request.form.get('limit', 20))
+
+    if not login_val or not password:
+        flash('Логин и пароль обязательны.', 'error')
         return redirect(url_for('main.admin'))
-    existing = AccessKey.find_by_password(password)
-    if existing:
-        flash('Этот пароль уже используется другим клиентом. Придумайте другой.', 'error')
-    else:
-        db.session.add(AccessKey(
-            key_hash=AccessKey.hash(password),
-            label=label,
-            monthly_limit=limit,
-        ))
-        db.session.commit()
-        flash(f'Клиент «{label or password}» добавлен.', 'success')
+
+    if AccessKey.query.filter_by(login=login_val).first():
+        flash(f'Логин «{login_val}» уже занят.', 'error')
+        return redirect(url_for('main.admin'))
+
+    db.session.add(AccessKey(
+        login=login_val,
+        key_hash=AccessKey.hash(password),
+        label=label,
+        monthly_limit=limit,
+    ))
+    db.session.commit()
+    flash(f'Пользователь «{login_val}» добавлен.', 'success')
+    return redirect(url_for('main.admin'))
+
+
+@bp.route('/admin/keys/<int:key_id>/edit', methods=['POST'])
+@admin_required
+def admin_key_edit(key_id):
+    key      = AccessKey.query.get_or_404(key_id)
+    label    = request.form.get('label', '').strip()
+    limit    = request.form.get('limit', '').strip()
+    password = request.form.get('password', '').strip()
+
+    if label:
+        key.label = label
+    if limit.isdigit():
+        key.monthly_limit = int(limit)
+    if password:
+        key.key_hash = AccessKey.hash(password)
+
+    db.session.commit()
+    flash(f'Пользователь «{key.login}» обновлён.', 'success')
     return redirect(url_for('main.admin'))
 
 
@@ -331,4 +367,5 @@ def admin_key_delete(key_id):
     key = AccessKey.query.get_or_404(key_id)
     db.session.delete(key)
     db.session.commit()
+    flash(f'Пользователь «{key.login}» удалён.', 'success')
     return redirect(url_for('main.admin'))

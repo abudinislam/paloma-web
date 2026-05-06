@@ -25,11 +25,15 @@ with app.app_context():
     db.create_all()
     # Миграция: добавляем key_id если его ещё нет (для существующих БД)
     with db.engine.connect() as conn:
-        try:
-            conn.execute(db.text('ALTER TABLE invoice ADD COLUMN key_id INTEGER REFERENCES access_key(id)'))
-            conn.commit()
-        except Exception:
-            pass  # столбец уже существует
+        for migration in [
+            'ALTER TABLE invoice ADD COLUMN key_id INTEGER REFERENCES access_key(id)',
+            'ALTER TABLE access_key ADD COLUMN login VARCHAR(100)',
+        ]:
+            try:
+                conn.execute(db.text(migration))
+                conn.commit()
+            except Exception:
+                pass  # столбец уже существует
     from models import AccessKey
     app_password = os.environ.get('APP_PASSWORD', '')
     if app_password and not AccessKey.query.first():

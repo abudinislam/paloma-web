@@ -6,65 +6,121 @@
 <title>ScanlyAi — Управление доступом</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--teal:#1D9E75;--teal-light:#E1F5EE;--teal-dark:#085041;--gray-50:#F7F6F2;--gray-100:#EDECEA;--gray-200:#D3D1C7;--gray-400:#888780;--gray-600:#5F5E5A;--gray-800:#2C2C2A;--white:#fff;--radius:12px;--radius-sm:8px}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--gray-50);color:var(--gray-800);font-size:14px;padding:2rem 1rem}
-.wrap{max-width:800px;margin:0 auto}
+:root{
+  --teal:#1D9E75;--teal-light:#E1F5EE;--teal-dark:#085041;
+  --gray-50:#F7F6F2;--gray-100:#EDECEA;--gray-200:#D3D1C7;
+  --gray-400:#888780;--gray-600:#5F5E5A;--gray-800:#2C2C2A;
+  --white:#fff;--radius:12px;--radius-sm:8px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--gray-50);color:var(--gray-800);font-size:14px;padding:2rem 1rem;min-height:100vh}
+.wrap{max-width:860px;margin:0 auto}
 .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem}
 .logo{font-size:18px;font-weight:700}
 .logo span{color:var(--teal)}
+.logo-sub{font-size:13px;color:var(--gray-400);font-weight:400;margin-left:6px}
 .logout{font-size:12px;color:var(--gray-400);text-decoration:none}
 .logout:hover{color:var(--gray-800)}
+
+/* Flash messages */
+.flash{padding:10px 14px;border-radius:var(--radius-sm);margin-bottom:1rem;font-size:13px}
+.flash-success{background:#D1FAE5;color:#065F46;border:1px solid #A7F3D0}
+.flash-error{background:#FEE2E2;color:#991B1B;border:1px solid #FECACA}
+
+/* Cards */
 .card{background:var(--white);border:1px solid var(--gray-100);border-radius:var(--radius);overflow:hidden;margin-bottom:1.25rem}
-.card-header{padding:1rem 1.25rem;border-bottom:1px solid var(--gray-100);font-size:13px;font-weight:600}
+.card-header{padding:.875rem 1.25rem;border-bottom:1px solid var(--gray-100);font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:space-between}
+.card-header-count{font-size:11px;font-weight:500;color:var(--gray-400);background:var(--gray-100);padding:2px 8px;border-radius:100px}
 .card-body{padding:1.25rem}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th{text-align:left;font-size:11px;font-weight:600;color:var(--gray-400);padding:8px 12px;border-bottom:1px solid var(--gray-100);background:var(--gray-50)}
-td{padding:10px 12px;border-bottom:1px solid var(--gray-100)}
-tr:last-child td{border-bottom:none}
-.bar-wrap{background:var(--gray-100);border-radius:100px;height:6px;width:100px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:6px}
-.bar-fill{height:100%;border-radius:100px}
-.form-row{display:grid;grid-template-columns:1fr 1fr 100px auto;gap:10px;align-items:end}
+
+/* Form */
+.form-grid{display:grid;grid-template-columns:1fr 1.2fr 1fr 90px auto;gap:10px;align-items:end}
+@media(max-width:700px){.form-grid{grid-template-columns:1fr 1fr;}.form-grid>div:last-child{grid-column:span 2}}
 label{display:block;font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:4px}
-input[type=text],input[type=password],input[type=number]{width:100%;padding:8px 10px;border:1px solid var(--gray-200);border-radius:var(--radius-sm);font-size:13px;outline:none}
+input[type=text],input[type=password],input[type=number]{width:100%;padding:8px 10px;border:1px solid var(--gray-200);border-radius:var(--radius-sm);font-size:13px;outline:none;transition:border-color .15s;color:var(--gray-800)}
 input:focus{border-color:var(--teal)}
-.btn{padding:8px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;border:none;cursor:pointer;white-space:nowrap}
+
+/* Buttons */
+.btn{padding:8px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;border:none;cursor:pointer;white-space:nowrap;transition:background .15s}
 .btn-primary{background:var(--teal);color:#fff}
 .btn-primary:hover{background:var(--teal-dark)}
+.btn-secondary{background:var(--gray-100);color:var(--gray-800);border:1px solid var(--gray-200)}
+.btn-secondary:hover{background:var(--gray-200)}
 .btn-danger{background:#FEE2E2;color:#991B1B;border:1px solid #FECACA}
 .btn-danger:hover{background:#FCA5A5}
-.empty{padding:2rem;text-align:center;color:var(--gray-400);font-size:13px}
+.btn-sm{padding:5px 10px;font-size:12px}
+
+/* Table */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;font-weight:600;color:var(--gray-400);padding:8px 12px;border-bottom:1px solid var(--gray-100);background:var(--gray-50)}
+td{padding:10px 12px;border-bottom:1px solid var(--gray-100);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafaf9}
+
+/* Usage bar */
+.bar-wrap{background:var(--gray-100);border-radius:100px;height:5px;width:80px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:6px}
+.bar-fill{height:100%;border-radius:100px;transition:width .3s}
+.bar-green{background:var(--teal)}
+.bar-yellow{background:#D97706}
+.bar-red{background:#B91C1C}
+
+/* Login badge */
+.login-badge{font-family:ui-monospace,'Cascadia Code',monospace;font-size:12px;background:var(--gray-100);color:var(--gray-800);padding:2px 8px;border-radius:6px;font-weight:500}
+
+/* Status pill */
+.status-ok{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--teal)}
+.status-warn{color:#D97706}
+.status-empty{color:#B91C1C}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block}
+
+.empty{padding:2.5rem;text-align:center;color:var(--gray-400);font-size:13px}
+.actions{display:flex;gap:6px;align-items:center}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:100;padding:1rem}
+.modal-overlay.open{display:flex}
+.modal{background:var(--white);border-radius:var(--radius);width:100%;max-width:420px;padding:1.5rem;box-shadow:0 20px 60px rgba(0,0,0,.15)}
+.modal-title{font-size:15px;font-weight:700;margin-bottom:1.25rem}
+.modal-field{margin-bottom:1rem}
+.modal-field:last-of-type{margin-bottom:1.25rem}
+.modal-hint{font-size:11px;color:var(--gray-400);margin-top:3px}
+.modal-row{display:flex;gap:10px;justify-content:flex-end}
 </style>
 </head>
 <body>
 <div class="wrap">
+
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for category, message in messages %}
-      <div style="padding:10px 14px;border-radius:var(--radius-sm);margin-bottom:1rem;font-size:13px;{% if category=='error' %}background:#FEE2E2;color:#991B1B;border:1px solid #FECACA{% else %}background:#D1FAE5;color:#065F46;border:1px solid #A7F3D0{% endif %}">
-        {{ message }}
-      </div>
+      <div class="flash flash-{{ category }}">{{ message }}</div>
     {% endfor %}
   {% endwith %}
+
   <div class="header">
-    <div class="logo">Scanly<span>Ai</span> <span style="font-size:13px;color:var(--gray-400);font-weight:400">/ Управление доступом</span></div>
+    <div class="logo">Scanly<span>Ai</span><span class="logo-sub">/ Управление доступом</span></div>
     <a href="/admin/logout" class="logout">→ Выйти</a>
   </div>
 
+  <!-- Add user -->
   <div class="card">
-    <div class="card-header">Добавить клиента</div>
+    <div class="card-header">Добавить пользователя</div>
     <div class="card-body">
       <form method="POST" action="/admin/keys/add">
-        <div class="form-row">
+        <div class="form-grid">
           <div>
-            <label>Имя клиента</label>
-            <input type="text" name="label" placeholder="ИП Иванов" required>
+            <label>Логин</label>
+            <input type="text" name="login" placeholder="ivanov" required autocomplete="off">
           </div>
           <div>
-            <label>Пароль для клиента</label>
-            <input type="text" name="password" placeholder="уникальный пароль" required>
+            <label>Имя (необязательно)</label>
+            <input type="text" name="label" placeholder="ИП Иванов" autocomplete="off">
           </div>
           <div>
-            <label>Лимит/мес</label>
-            <input type="number" name="limit" value="100" min="1" max="10000">
+            <label>Пароль</label>
+            <input type="text" name="password" placeholder="секретный пароль" required autocomplete="off">
+          </div>
+          <div>
+            <label>Лимит</label>
+            <input type="number" name="limit" value="20" min="1" max="10000">
           </div>
           <div>
             <label>&nbsp;</label>
@@ -75,13 +131,18 @@ input:focus{border-color:var(--teal)}
     </div>
   </div>
 
+  <!-- Users table -->
   <div class="card">
-    <div class="card-header">Клиенты ({{ keys|length }})</div>
+    <div class="card-header">
+      Пользователи
+      <span class="card-header-count">{{ keys|length }}</span>
+    </div>
     {% if keys %}
     <table>
       <thead>
         <tr>
-          <th>Клиент</th>
+          <th>Логин</th>
+          <th>Имя</th>
           <th>Использовано в этом месяце</th>
           <th>Лимит</th>
           <th>Добавлен</th>
@@ -91,29 +152,91 @@ input:focus{border-color:var(--teal)}
       <tbody>
         {% for k in keys %}
         <tr>
-          <td><strong>{{ k.label }}</strong></td>
+          <td><span class="login-badge">{{ k.login }}</span></td>
+          <td style="color:var(--gray-600)">{{ k.label }}</td>
           <td>
-            {% set pct = ((k.monthly_limit - k.remaining) / k.monthly_limit * 100)|int %}
-            <div class="bar-wrap">
-              <div class="bar-fill" style="width:{{ pct }}%;background:{% if k.remaining <= 10 %}#B91C1C{% elif k.remaining <= 30 %}#B45309{% else %}#1D9E75{% endif %}"></div>
-            </div>
-            {{ k.used }} / {{ k.monthly_limit }}
+            {% set pct = ((k.used / k.monthly_limit) * 100)|int if k.monthly_limit > 0 else 0 %}
+            {% if k.remaining == 0 %}
+              <span class="status-empty"><span class="dot"></span>Лимит исчерпан</span>
+            {% elif k.remaining <= (k.monthly_limit * 0.2)|int %}
+              <span class="status-warn">
+                <div class="bar-wrap" style="display:inline-block"><div class="bar-fill bar-yellow" style="width:{{ pct }}%"></div></div>
+                {{ k.used }} / {{ k.monthly_limit }}
+              </span>
+            {% else %}
+              <span class="status-ok">
+                <div class="bar-wrap" style="display:inline-block"><div class="bar-fill bar-green" style="width:{{ pct }}%"></div></div>
+                {{ k.used }} / {{ k.monthly_limit }}
+              </span>
+            {% endif %}
           </td>
           <td>{{ k.monthly_limit }} накл.</td>
           <td style="color:var(--gray-400)">{{ k.created_at }}</td>
           <td>
-            <form method="POST" action="/admin/keys/{{ k.id }}/delete" onsubmit="return confirm('Удалить клиента {{ k.label }}?')">
-              <button type="submit" class="btn btn-danger">Удалить</button>
-            </form>
+            <div class="actions">
+              <button class="btn btn-secondary btn-sm"
+                onclick="openEdit({{ k.id }}, '{{ k.login }}', '{{ k.label if k.label != '—' else '' }}', {{ k.monthly_limit }})">
+                Изменить
+              </button>
+              <form method="POST" action="/admin/keys/{{ k.id }}/delete"
+                onsubmit="return confirm('Удалить пользователя {{ k.login }}?')">
+                <button type="submit" class="btn btn-danger btn-sm">Удалить</button>
+              </form>
+            </div>
           </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
     {% else %}
-    <div class="empty">Клиентов пока нет. Добавьте первого выше.</div>
+    <div class="empty">Пользователей пока нет. Добавьте первого выше.</div>
     {% endif %}
   </div>
+
 </div>
+
+<!-- Edit modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeEditOnOverlay(event)">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Изменить пользователя</div>
+    <form method="POST" id="editForm">
+      <div class="modal-field">
+        <label>Имя</label>
+        <input type="text" name="label" id="editLabel" placeholder="ИП Иванов" autocomplete="off">
+      </div>
+      <div class="modal-field">
+        <label>Лимит накладных в месяц</label>
+        <input type="number" name="limit" id="editLimit" min="1" max="10000">
+      </div>
+      <div class="modal-field">
+        <label>Новый пароль</label>
+        <input type="text" name="password" id="editPassword" placeholder="Оставьте пустым, чтобы не менять" autocomplete="off">
+        <div class="modal-hint">Заполните только если хотите сменить пароль</div>
+      </div>
+      <div class="modal-row">
+        <button type="button" class="btn btn-secondary" onclick="closeEdit()">Отмена</button>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openEdit(id, login, label, limit) {
+  document.getElementById('modalTitle').textContent = 'Изменить: ' + login;
+  document.getElementById('editForm').action = '/admin/keys/' + id + '/edit';
+  document.getElementById('editLabel').value = label;
+  document.getElementById('editLimit').value = limit;
+  document.getElementById('editPassword').value = '';
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeEdit() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+function closeEditOnOverlay(e) {
+  if (e.target === document.getElementById('modalOverlay')) closeEdit();
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEdit(); });
+</script>
 </body>
 </html>

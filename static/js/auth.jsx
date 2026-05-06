@@ -17,7 +17,7 @@ function Field({label,value,onChange,placeholder,type,required}){
 
 function AuthPage({setPage,onLogin}){
   const {add,el:toastEl}=useToast();
-  const [form,setForm]=useState({password:''});
+  const [form,setForm]=useState({login:'',password:''});
   const [loading,setLoading]=useState(false);
   const upd=(k,v)=>setForm(f=>({...f,[k]:v}));
 
@@ -28,7 +28,7 @@ function AuthPage({setPage,onLogin}){
       const res=await fetch('/api/login',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({password:form.password})
+        body:JSON.stringify({login:form.login,password:form.password})
       });
       const data=await res.json();
       if(res.ok){
@@ -36,7 +36,7 @@ function AuthPage({setPage,onLogin}){
         onLogin&&onLogin();
         setTimeout(()=>setPage('app'),700);
       } else {
-        add(data.error||'Неверный пароль','err');
+        add(data.error||'Неверный логин или пароль','err');
       }
     } catch {
       add('Ошибка соединения','err');
@@ -65,11 +65,13 @@ function AuthPage({setPage,onLogin}){
                 Вход в ScanlyAI
               </div>
               <div style={{fontSize:13,color:'oklch(1 0 0 / 0.5)',marginTop:5}}>
-                Введите пароль доступа
+                Введите логин и пароль
               </div>
             </div>
 
             <form onSubmit={submit} style={{padding:'28px 32px',display:'flex',flexDirection:'column',gap:14}}>
+              <Field label="Логин" value={form.login} onChange={v=>upd('login',v)}
+                placeholder="ivanov" required/>
               <Field label="Пароль" value={form.password} onChange={v=>upd('password',v)}
                 placeholder="••••••••" type="password" required/>
 
