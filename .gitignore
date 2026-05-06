@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.pyo
+*.db
+*.sqlite3
+.env
+scanlyai-*.html
+scanlyai-video/
+scanlyai-demo.mp4
